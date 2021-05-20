@@ -22,8 +22,8 @@ files += $(wildcard *.a)
 CLEAN = $(foreach file,$(files),rm $(file);)
 
 CC ?= gcc
-CFLAGS += -std=c11
-CPPFLAGS += -Wall -Wextra -Werror -O3 -I.
+CFLAGS ?= -std=c17
+CPPFLAGS ?= -Wall -Wextra -Werror -O3 -I.
 
 AR ?= ar
 
