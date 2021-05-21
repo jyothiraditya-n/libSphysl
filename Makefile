@@ -23,7 +23,7 @@ CLEAN = $(foreach file,$(files),rm $(file);)
 
 CC ?= gcc
 CFLAGS ?= -std=c17
-CPPFLAGS ?= -Wall -Wextra -Werror -O3 -I.
+CPPFLAGS ?= -Wall -Wextra -Werror -O3 -I include/
 
 AR ?= ar
 
