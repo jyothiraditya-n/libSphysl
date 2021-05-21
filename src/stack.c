@@ -22,7 +22,7 @@
 #include <LS_stack.h>
 
 extern void LSs_init(LSs_t *stack) {
-	stack -> top = 0;
+	stack -> top = NULL;
 	stack -> size = 0;
 	return;
 }
@@ -37,6 +37,7 @@ extern void LSs_clear(LSs_t *stack) {
 		frame = below;
 	}
 
+	stack -> top = NULL;
 	stack -> size = 0;
 	return;
 }
@@ -46,7 +47,7 @@ extern int LSs_push(LSs_t *stack, void *data) {
 	LSs_frame_t *frame = malloc(sizeof(LSs_frame_t));
 
 	if(!frame) {
-		perror("stdlib");
+		if(LSe_auto) perror("stdlib");
 		LS_errno = LS_MALLOC_ERR;
 		return LSE_NOOP;
 	}

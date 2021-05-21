@@ -23,10 +23,17 @@
 #define LSE_ILLEGAL -1
 #define LSE_OK 0
 #define LSE_NOOP 1
-#define LSE_NO_REC 2
-#define LSE_YES_REC 3
+#define LSE_REC 2
+#define LSE_NO_REC 3
 
 #define LS_MALLOC_ERR 1
+#define LS_MTX_INIT_ERR 2
+#define LS_MTX_LOCK_ERR 3
+#define LS_MTX_UNLOCK_ERR 4
+#define LS_THREAD_CREATE_ERR 5
+#define LS_THREAD_JOIN_ERR 6
+
+extern bool LSe_auto;
 
 extern thread_local int LS_errno;
 extern const char *LS_strerror(int err);

@@ -14,31 +14,35 @@
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include <threads.h>
-#include <stdio.h>
-#include <LS_error.h>
 
-#define MAX_ERR 6
+#ifndef LS_MATH_H
+#define LS_MATH_H 1
 
-bool LSe_auto = false;
+#define LSm_rdivu(a, b) ((a + (b / 2)) / b)
 
-thread_local int LS_errno;
+#define LSm_rdivd(a, b) (((a < 0) ^ (b < 0)) \
+	? ((a - b / 2) / b) \
+	: ((a + b / 2) / b))
 
-static const char *errors[MAX_ERR + 1] = {
-	"Unknown error: 0",
-	"Memory allocation error: 1",
-	"Mutex initialisation error: 2",
-	"Mutex locking error: 3",
-	"Mutex unlocking error: 4",
-	"Thread creation error: 5",
-	"Thread joining error: 6"
-};
+#define LSM_ADD 0
+#define LSM_SUB 1
+#define LSM_MUL 2
+#define LSM_DIV 3
 
-const char *LS_strerror(int err) {
-	if(err < 0 || err > MAX_ERR) err = 0;
-	return errors[err];
-}
+typedef struct {
+	int op;
 
-void LS_perror() {
-	fprintf(stderr, "libSphysl: %s", LS_strerror(LS_errno));
-	return;
-}
+	mtx_t *inp1_mtx;
+	double *inp1;
+
+	mtx_t *inp2_mtx;
+	double *inp2;
+
+	mtx_t *ret_mtx;
+	double *ret;
+
+} LSm_inp_t;
+
+extern int LSm_do(void *input);
+
+#endif
