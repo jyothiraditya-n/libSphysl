@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,32 +13,13 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <threads.h>
-#include <stdio.h>
-#include <LS_error.h>
+#include <libSphysl.h>
 
-#define MAX_ERR 6
+#ifndef LS_CLASSICAL_H
+#define LS_CLASSICAL_H 1
+namespace libSphysl::classical {
 
-bool LSe_auto = false;
+libSphysl::engine_t motion(libSphysl::sandbox_t* s);
 
-thread_local int LS_errno;
-
-static const char *errors[MAX_ERR + 1] = {
-	"Unknown error: 0",
-	"Memory allocation error: 1",
-	"Mutex initialisation error: 2",
-	"Mutex locking error: 3",
-	"Mutex unlocking error: 4",
-	"Thread creation error: 5",
-	"Thread joining error: 6"
-};
-
-const char *LS_strerror(int err) {
-	if(err < 0 || err > MAX_ERR) err = 0;
-	return errors[err];
 }
-
-void LS_perror() {
-	fprintf(stderr, "libSphysl: %s", LS_strerror(LS_errno));
-	return;
-}
+#endif

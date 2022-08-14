@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,27 +13,16 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <stddef.h>
+#include <libSphysl.h>
 
-#ifndef LS_STACK_H
-#define LS_STACK_H 1
+#ifndef LS_CLOCKS_H
+#define LS_CLOCKS_H 1
+namespace libSphysl::clocks {
 
-typedef struct LSs_frame_s {
-	struct LSs_frame_s *below;
-	void *data;
+libSphysl::engine_t system(libSphysl::sandbox_t* s);
 
-} LSs_frame_t;
+libSphysl::engine_t constrained(libSphysl::sandbox_t* s,
+	double min, double max);
 
-typedef struct {
-	LSs_frame_t *top;
-	size_t size;
-
-} LSs_t;
-
-extern void LSs_init(LSs_t *stack);
-extern void LSs_clear(LSs_t *stack);
-
-extern int LSs_push(LSs_t *stack, void *data);
-extern void *LSs_pop(LSs_t *stack);
-
+}
 #endif

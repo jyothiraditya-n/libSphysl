@@ -1,4 +1,4 @@
-# The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+# The Sphysl Project (C) 2022 Jyothiraditya Nellakra
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -13,33 +13,45 @@
 # You should have received a copy of the GNU General Public License along with
 # this program. If not, see <https://www.gnu.org/licenses/>.
 
-objs = $(patsubst %.c,%.o,$(wildcard src/*.c))
-headers = $(wildcard *.h)
+headers = $(shell find inc/ -name "*.h")
+objs = $(patsubst %.cc,%.o,$(wildcard src/*.cc))
 
-files = $(foreach file,$(objs),$(wildcard $(file)))
+demos = $(patsubst demo/%.cc,%,$(wildcard demo/*.cc))
+demo_objs = $(patsubst %.cc,%.o,$(wildcard demo/*.cc))
+
+files = $(foreach file,$(objs) $(demo_objs),$(wildcard $(file)))
 files += $(wildcard *.a)
 
 CLEAN = $(foreach file,$(files),rm $(file);)
 
-CC ?= gcc
-CFLAGS ?= -std=c17
-CPPFLAGS ?= -Wall -Wextra -Werror -O3 -I include/
+CPPFLAGS += -Wall -Wextra -std=c++17 -O3 -I inc/ -I libClame/inc/
+CXXFLAGS += -std=c++17 -O3 -s
 
-AR ?= ar
+libs = libClame/libClame.a libSphysl.a
+LD_LIBS ?= -L. -lSphysl -lm -L libClame -lClame
 
-$(objs) : %.o : %.c $(headers)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+$(objs) : %.o : %.cc $(headers)
+	$(CXX) $(CPPFLAGS) -c $< -o $@
 
 libSphysl.a : $(objs)
 	$(AR) -r libSphysl.a $(objs)
 
+$(demo_objs) : %.o : %.cc $(headers) libClame
+	$(CXX) $(CPPFLAGS) -c $< -o $@
+
+$(demos) : % : demo/%.o $(libs)
+	$(CXX) $(CXXFLAGS) $< -o $@ $(LD_LIBS)
+
+$(demo_shs) : % : demo/%.sh
+	cp $< $@; chmod +x $@
+
+libClame/libClame.a : libClame
+	cd libClame; make libClame.a; cd ..
+
 .DEFAULT_GOAL = all
 .PHONY : all clean
 
-all : libSphysl.a
+all : libSphysl.a $(demos) $(demo_shs)
 
 clean :
 	$(CLEAN)
-
-run : simple-flight
-	./simple-flight

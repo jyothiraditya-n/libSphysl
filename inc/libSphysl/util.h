@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,15 +13,20 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <LS_string.h>
+#include <libSphysl.h>
 
-bool LS_streq(const char *str1, const char *str2) {
-	while(*str1 || *str2) {
-		if(*str1 != *str2) return false;
-		str1++; str2++;
+#ifndef LS_UTIL_H
+#define LS_UTIL_H 1
+namespace libSphysl::util {
+
+template<typename T>
+void destructor(libSphysl::engine_t* e) {
+	for(auto& i: e -> args) {
+		delete reinterpret_cast<T*>(i);
 	}
-
-	return true;
 }
+
+void null_destructor(libSphysl::engine_t* e);
+
+}
+#endif

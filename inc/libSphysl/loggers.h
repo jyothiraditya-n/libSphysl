@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,30 +13,15 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <threads.h>
-#include <stdbool.h>
-#include <stdio.h>
+#include <fstream>
 
-#ifndef LS_ERROR
-#define LS_ERROR 1
+#include <libSphysl.h>
 
-#define LSE_ILLEGAL -1
-#define LSE_OK 0
-#define LSE_NOOP 1
-#define LSE_REC 2
-#define LSE_NO_REC 3
+#ifndef LS_LOGGERS_H
+#define LS_LOGGERS_H 1
+namespace libSphysl::loggers {
 
-#define LS_MALLOC_ERR 1
-#define LS_MTX_INIT_ERR 2
-#define LS_MTX_LOCK_ERR 3
-#define LS_MTX_UNLOCK_ERR 4
-#define LS_THREAD_CREATE_ERR 5
-#define LS_THREAD_JOIN_ERR 6
+libSphysl::engine_t csv(libSphysl::sandbox_t* s, std::ofstream &file);
 
-extern bool LSe_auto;
-
-extern thread_local int LS_errno;
-extern const char *LS_strerror(int err);
-extern void LS_perror();
-
+}
 #endif

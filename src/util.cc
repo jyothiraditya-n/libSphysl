@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2021 Jyothiraditya Nellakra
+/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,11 +13,11 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <stdbool.h>
+#include <libSphysl/util.h>
 
-#ifndef LS_STRING_H
-#define LS_STRING_H 1
+using namespace libSphysl::util;
+using namespace libSphysl;
 
-extern bool LS_streq(const char *str1, const char *str2);
-
-#endif
+void null_destructor(engine_t* e) {
+        (void) e;
+}
