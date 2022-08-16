@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -15,18 +15,11 @@
 
 #include <libSphysl.h>
 
-#ifndef LS_UTIL_H
-#define LS_UTIL_H 1
-namespace libSphysl::util {
+#ifndef LS_MOTION_H
+#define LS_MOTION_H 1
+namespace libSphysl::motion {
 
-template<typename T>
-void destructor(libSphysl::engine_t* e) {
-	for(auto& i: e -> args) {
-		delete reinterpret_cast<T*>(i);
-	}
-}
-
-void null_destructor(libSphysl::engine_t* e);
+libSphysl::engine_t classical(libSphysl::sandbox_t* s);
 
 }
 #endif

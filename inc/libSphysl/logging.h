@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,11 +13,19 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <libSphysl/util.h>
+#include <iostream>
 
-using namespace libSphysl::util;
-using namespace libSphysl;
+#include <libSphysl.h>
 
-void null_destructor(engine_t* e) {
-        (void) e;
+#ifndef LS_LOGGING_H
+#define LS_LOGGING_H 1
+namespace libSphysl::logging {
+
+libSphysl::engine_t csv(
+	libSphysl::sandbox_t* s, std::ostream& file, std::size_t frequency,
+	std::size_t database_entries, std::list<std::string> database_keys,
+	std::list<std::string> config_keys
+);
+
 }
+#endif

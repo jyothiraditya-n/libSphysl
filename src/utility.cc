@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project (C) Copyright 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,16 +13,27 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <libSphysl.h>
+#include <libSphysl/utility.h>
 
-#ifndef LS_CLOCKS_H
-#define LS_CLOCKS_H 1
-namespace libSphysl::clocks {
+using namespace libSphysl::utility;
+using namespace libSphysl;
 
-libSphysl::engine_t system(libSphysl::sandbox_t* s);
-
-libSphysl::engine_t constrained(libSphysl::sandbox_t* s,
-	double min, double max);
-
+void libSphysl::utility::null_calculator(libSphysl::sandbox_t* s, void* arg) {
+	(void) s; (void) arg;
 }
-#endif
+
+void libSphysl::utility::null_destructor(engine_t* e) {
+	(void) e;
+}
+
+void libSphysl::utility::randomise(
+	std::vector<data_t> &v, double min, double max
+){
+	std::random_device device;
+	std::mt19937 mersenne_engine{device()};
+	std::uniform_real_distribution<double> distribution(min, max);
+
+	for(auto &i: v) {
+		i = distribution(mersenne_engine);
+	}
+}

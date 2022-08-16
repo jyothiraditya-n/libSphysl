@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -14,84 +14,93 @@
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include <libSphysl.h>
+#include <libSphysl/utility.h>
 
 using namespace libSphysl;
+using namespace libSphysl::utility;
 
-thread_t::thread_t() {};
-thread_t::thread_t(const thread_t &t):
-	calculator(t.calculator), sandbox(t.sandbox), args(t.args) {};
+thread_t::thread_t() {}
 
-static void helper_kernel(thread_t* t) {
-loop:	t -> start.lock();
-	t -> stop.lock();
-	t -> start.unlock();
+thread_t::thread_t(const thread_t& t):
+	calculator(t.calculator), sandbox(t.sandbox), args(t.args)
+{}
 
-	for(auto& i: t -> args) {
-		t -> calculator(t -> sandbox, i);
-	}
+workset_t::workset_t(sandbox_t* s, const engine_t e) {
+	threads = &(s -> threads);
 
-	t -> stop.unlock();
-
-	if(t -> finished == true) return;
-	else goto loop;
-}
-
-workset_t::workset_t(sandbox_t *s, engine_t e, std::size_t concurrency) {
-	auto total = e.args.size();
+	const auto total = e.args.size();
+	auto concurrency = threads -> size();
 	concurrency = total > concurrency? concurrency: total;
 
-	auto per_thread = total / concurrency;
-	auto first_thread = per_thread + (total % concurrency);
+	const auto per_thread = total / concurrency;
+	const auto first_thread = per_thread + (total % concurrency);
 
-	thread_t thread = thread_t();
-	thread.calculator = e.calculator;
-	thread.sandbox = s;
+	listing_t listing = listing_t();
+	listing.first = e.calculator;
 
 	auto it = e.args.begin();
-
 	for(size_t i = 0; i < concurrency; i++) {
-		auto limit = i? per_thread: first_thread;
+		const auto limit = i? per_thread: first_thread;
 
 		for(size_t j = 0; j < limit; j++) {
-			thread.args.push_back(*it);
+			listing.second.push_back(*it);
 			std::advance(it, 1);
 		}
 
-		threads.push_back(thread);
-		thread.args.clear();
-	}
-}
-
-void workset_t::init() {
-	for(auto& i: threads) {
-		i.finished = false;
-		i.start.lock();
-		i.thread = std::thread{helper_kernel, &i};
-	}
-}
-
-void workset_t::finish() {
-	for(auto& i: threads) {
-		i.finished = true;
-		i.thread.join();
+		listings.push_back(listing);
+		listing.second.clear();
 	}
 }
 
 void workset_t::run() {
-	for(auto& i: threads) {
-		i.start.unlock();
+	const auto start = threads -> begin();
+	auto it = start;
+
+	for(auto& i: listings) {
+		it -> calculator = &i.first;
+		it -> args = &i.second;
+		it -> start.unlock();
+
+		std::advance(it, 1);
 	}
 
-	for(auto& i: threads) {
-		i.stop.unlock();
+	it = start;
+	for(const auto& i: listings) {
+		it -> start.lock();
+		(void) i;
+
+		std::advance(it, 1);
+	}
+
+	it = start;
+	for(const auto& i: listings) {
+		it -> stop.lock();
+		it -> stop.unlock();
+		(void) i;
+
+		std::advance(it, 1);
 	}
 }
 
-void sandbox_t::add_engine(engine_t e) {
+void sandbox_t::add_engine(const engine_t e) {
 	engines.push_back(e);
 
-	workset_t workset(this, e, std::thread::hardware_concurrency());
+	workset_t workset(this, e);
 	worksets.push_back(workset);
+}
+
+void sandbox_t::add_engine(const std::list<engine_t> e) {
+	for(const auto& i: e) {
+		this -> add_engine(i);
+	}
+}
+
+sandbox_t::sandbox_t() {
+	threads = std::list<thread_t>(std::thread::hardware_concurrency());
+
+	for(auto& i: threads) {
+		i.sandbox = this;
+	}
 }
 
 sandbox_t::~sandbox_t() {
@@ -100,28 +109,53 @@ sandbox_t::~sandbox_t() {
 	}
 }
 
+static void helper_kernel(thread_t* t) {
+loop:	t -> start.lock();
+	t -> stop.lock();
+	t -> start.unlock();
+
+	for(const auto& i: *(t -> args)) {
+		(*(t -> calculator))(t -> sandbox, i);
+	}
+
+	t -> stop.unlock();
+
+	if(t -> finished == true) return;
+	else goto loop;
+}
+
 static void main_kernel(sandbox_t *s) {
 	while(!s -> finished) {
-		for(auto &i: s -> worksets) {
+		for(auto& i: s -> worksets) {
 			i.run();
 		}
 	}
 }
 
 void sandbox_t::start() {
-	for(auto &i: worksets) {
-		i.init();
+	for(auto& i: threads) {
+		i.finished = false;
+		i.start.lock();
+		i.thread = std::thread{helper_kernel, &i};
 	}
 
 	finished = false;
-	thread = std::thread{main_kernel, this};
+	main_thread = std::thread{main_kernel, this};
 }
 
 void sandbox_t::stop() {
 	finished = true;
-	thread.join();
+	main_thread.join();
 
-	for(auto &i: worksets) {
-		i.finish();
+	for(auto& i: threads) {
+		auto calculator = calculator_t{null_calculator};
+		auto args = std::list<void*>{};
+
+		i.finished = true;
+		i.calculator = &calculator;
+		i.args = &args;
+
+		i.start.unlock();
+		i.thread.join();
 	}
 }

@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -15,11 +15,11 @@
 
 #include <libSphysl.h>
 
-#ifndef LS_CLASSICAL_H
-#define LS_CLASSICAL_H 1
-namespace libSphysl::classical {
+#ifndef LS_COLLISION_H
+#define LS_COLLISION_H 1
+namespace libSphysl::collision {
 
-libSphysl::engine_t motion(libSphysl::sandbox_t* s);
+std::list<libSphysl::engine_t> box(libSphysl::sandbox_t* s);
 
 }
 #endif

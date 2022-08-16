@@ -1,4 +1,4 @@
-/* The Sphysl Project (C) 2022 Jyothiraditya Nellakra
+/* The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -13,17 +13,14 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <fstream>
-
 #include <libSphysl.h>
 
-#ifndef LS_BOUNDS_H
-#define LS_BOUNDS_H 1
-namespace libSphysl::bounds {
+#ifndef LS_TIME_H
+#define LS_TIME_H 1
+namespace libSphysl::time {
 
-libSphysl::engine_t box(libSphysl::sandbox_t* s,
-	double x_min, double y_min, double z_min,
-	double x_max, double y_max, double z_max);
+libSphysl::engine_t realtime(libSphysl::sandbox_t* s);
+libSphysl::engine_t constant(libSphysl::sandbox_t* s);
 
 }
 #endif

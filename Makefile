@@ -24,11 +24,11 @@ files += $(wildcard *.a)
 
 CLEAN = $(foreach file,$(files),rm $(file);)
 
-CPPFLAGS += -Wall -Wextra -std=c++17 -O3 -I inc/ -I libClame/inc/
-CXXFLAGS += -std=c++17 -O3 -s
+CPPFLAGS += -Wall -Wextra -Wpedantic -std=c++17 -g -I inc/ -I libClame/inc/
+CXXFLAGS += -std=c++17 -g
 
 libs = libClame/libClame.a libSphysl.a
-LD_LIBS ?= -L. -lSphysl -lm -L libClame -lClame
+LD_LIBS ?= -L. -lSphysl -lm -L libClame -lClame -lpthread -lm
 
 $(objs) : %.o : %.cc $(headers)
 	$(CXX) $(CPPFLAGS) -c $< -o $@
@@ -46,7 +46,7 @@ $(demo_shs) : % : demo/%.sh
 	cp $< $@; chmod +x $@
 
 libClame/libClame.a : libClame
-	cd libClame; make libClame.a; cd ..
+	+cd libClame; make libClame.a; cd ..
 
 .DEFAULT_GOAL = all
 .PHONY : all clean
