@@ -47,5 +47,18 @@ void randomise(std::vector<libSphysl::data_t> &v, T min, T max) {
 
 void randomise(std::vector<libSphysl::data_t> &v, double min, double max);
 
+struct vector_t {
+	double x, y, z;
+
+	double length() const;
+	double dot(const vector_t& v) const;
+	vector_t cross(const vector_t& v) const;
+
+	vector_t operator+(const vector_t& v) const;
+	vector_t operator-(const vector_t& v) const;
+	vector_t operator*(const double d) const;
+	vector_t operator/(const double d) const;
+};
+
 }
 #endif

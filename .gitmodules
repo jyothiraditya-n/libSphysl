@@ -1,3 +1,6 @@
 [submodule "libClame"]
 	path = libClame
 	url = https://github.com/jyothiraditya-n/libClame.git
+[submodule "libScricon"]
+	path = libScricon
+	url = https://github.com/jyothiraditya-n/libScricon.git

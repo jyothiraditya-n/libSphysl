@@ -20,7 +20,7 @@
 #include <thread>
 
 #include <libSphysl.h>
-#include <libSphysl/collision.h>
+#include <libSphysl/gravity.h>
 #include <libSphysl/logging.h>
 #include <libSphysl/motion.h>
 #include <libSphysl/time.h>
@@ -42,14 +42,12 @@ extern "C" {
 
 	#include <LSC_buffer.h>
 	#include <LSC_error.h>
-	#include <LSC_lines.h>
 }
 
 using namespace std::chrono;
 using namespace std;
 
 using namespace libSphysl::logging;
-using namespace libSphysl::motion;
 using namespace libSphysl::time;
 using namespace libSphysl::utility;
 using namespace libSphysl;
@@ -64,21 +62,10 @@ LSCb_t buffer;
 struct termios cooked, raw;
 size_t height, width;
 
-size_t entities = 100;
+size_t entities = 255;
 size_t log_freq = 1;
 size_t exec_time = 0;
 size_t step_time = 1;
-
-double side_length = 1.0;
-
-double min_velocity = -1.0;
-double max_velocity = 1.0;
-
-double min_part_size = 0.0;
-double max_part_size = 0.0;
-
-double min_part_mass = 0.0;
-double max_part_mass = 0.0;
 
 void about();
 void help(int ret);
@@ -92,88 +79,48 @@ void renderer(sandbox_t* s, void* arg);
 int main(int argc, char **argv) {
 	name = argv[0];
 	init_flags(argc, argv);
-	
-	if(min_part_size == 0.0) {
-		min_part_size = side_length / pow(entities, 1.0 / 3.0);
-		min_part_size -= min_part_size / 5.0;
-	}
 
-	if(max_part_size == 0.0) {
-		max_part_size = side_length / pow(entities, 1.0 / 3.0);
-		max_part_size += max_part_size / 5.0;
-	}
+	sandbox.config["entity count"] = size_t{10};
 
-	if(min_part_mass == 0.0) {
-		min_part_size = 1.204 * pow(side_length, 3.0) / entities;
-		min_part_size -= min_part_mass / 5.0;
-	}
+	sandbox.add_engine(gravity::classical(&sandbox));
+	sandbox.add_engine(motion::classical(&sandbox));
 
-	if(max_part_mass == 0.0) {
-		max_part_mass = 1.204 * pow(side_length, 3.0) / entities;
-		max_part_mass += max_part_mass / 5.0;
-	}
+	auto& xs = sandbox.database.at("x position");
+	xs[1] = 6.0 * std::pow(10.0, 10.0);
+	xs[2] = -1.0 * std::pow(10.0, 11.0);
+	xs[3] = 1.5 * std::pow(10.0, 11.0);
+	xs[4] = -2.2 * std::pow(10.0, 11.0);
+	xs[5] = 7.8 * std::pow(10.0, 11.0);
+	xs[6] = -1.4 * std::pow(10.0, 12.0);
+	xs[7] = 2.9 * std::pow(10.0, 12.0);
+	xs[8] = -4.5 * std::pow(10.0, 12.0);
+	xs[9] = 6.3 * std::pow(10.0, 12.0);
 
-	sandbox.config["entity count"] = size_t{entities + 1};
+	auto& v_ys = sandbox.database.at("y velocity");
+	v_ys[1] = 4.7 * std::pow(10.0, 4.0);
+	v_ys[2] = -3.5 * std::pow(10.0, 4.0);
+	v_ys[3] = 3.0 * std::pow(10.0, 4.0);
+	v_ys[4] = -2.4 * std::pow(10.0, 4.0);
+	v_ys[5] = 1.3 * std::pow(10.0, 4.0);
+	v_ys[6] = -9.7 * std::pow(10.0, 3.0);
+	v_ys[7] = 6.8 * std::pow(10.0, 3.0);
+	v_ys[8] = -5.4 * std::pow(10.0, 3.0);
+	v_ys[9] = 4.7 * std::pow(10.0, 3.0);
 
-	sandbox.add_engine(collision::box(&sandbox));
-	sandbox.config["bounding box width"] = side_length;
-	sandbox.config["bounding box height"] = side_length;
-	sandbox.config["bounding box depth"] = side_length;
-
-	randomise(
-		sandbox.database["bounding box width"],
-		min_part_size, max_part_size
-	);
-
-	randomise(
-		sandbox.database["bounding box height"],
-		min_part_size, max_part_size
-	);
-
-	randomise(
-		sandbox.database["bounding box depth"],
-		min_part_size, max_part_size
-	);
-
-	sandbox.add_engine(classical(&sandbox));
-
-	randomise(
-		sandbox.database["x position"],
-		-side_length, side_length
-	);
-
-	randomise(
-		sandbox.database["y position"],
-		-side_length, side_length
-	);
-	
-	randomise(
-		sandbox.database["z position"],
-		-side_length, side_length
-	);
-
-	randomise(
-		sandbox.database["x velocity"],
-		min_velocity, max_velocity
-	);
-
-	randomise(
-		sandbox.database["y velocity"],
-		min_velocity, max_velocity
-	);
-
-	randomise(
-		sandbox.database["z velocity"],
-		min_velocity, max_velocity
-	);
-
-	randomise(
-		sandbox.database["mass"],
-		min_part_mass, max_part_mass
-	);
+	auto& ms = sandbox.database.at("mass");
+	ms[0] = 2.0 * std::pow(10.0, 30.0);
+	ms[1] = 6.1 * std::pow(10.0, 10.0);
+	ms[2] = 4.9 * std::pow(10.0, 24.0);
+	ms[3] = 6.0 * std::pow(10.0, 24.0);
+	ms[4] = 6.4 * std::pow(10.0, 23.0);
+	ms[5] = 1.9 * std::pow(10.0, 27.0);
+	ms[6] = 5.7 * std::pow(10.0, 26.0);
+	ms[7] = 8.7 * std::pow(10.0, 25.0);
+	ms[8] = 1.0 * std::pow(10.0, 26.0);
+	ms[9] = 1.3 * std::pow(10.0, 22.0);
 
 	sandbox.add_engine(constant(&sandbox));
-	sandbox.config["time change"] = step_time * pow(10.0, -6.0);
+	sandbox.config.at("time change") = step_time * 24.0 * 3600.0;
 
 	signal(SIGINT, on_interrupt);
 
@@ -219,7 +166,7 @@ int main(int argc, char **argv) {
 	if(strlen(output) && strcmp(output, "-")) {
 		sandbox.add_engine(csv(
 			&sandbox, output, log_freq, 10,
-			{"x position", "y position", "z position"},
+			{"x acceleration", "y acceleration", "z acceleration"},
 			{"time", "time change"}
 		));
 	}
@@ -248,7 +195,7 @@ int main(int argc, char **argv) {
 void about() {
 	putchar('\n');
 	puts("  The Sphysl Project Copyright (C) 2022 Jyothiraditya Nellakra");
-	puts("  Brownian Motion Demonstration\n");
+	puts("  Solar System Demonstration\n");
 
 	puts("  This program is free software: you can redistribute it and/or modify");
 	puts("  it under the terms of the GNU General Public License as published by");
@@ -275,21 +222,11 @@ void help(int ret) {
 	puts("    -h, --help                print this help dialogue\n");
 
 	puts("    -e, --entities NUM        set the number of entities");
-	puts("    -t, --step-time USECS     set the time per simulation step");
+	puts("    -t, --step-time DAYS      set the time per simulation step");
 	puts("    -T, --exec-time SECS      set the execution time\n");
 
 	puts("    -f, --log-freq N          set the logging to every N cycles");
 	puts("    -o, --output FILE         set the output file\n");
-
-	puts("    -s, --side-length METRES  set the side length of the container");
-	puts("    -p, --min-part-size RAD   set the minimum particle radius");
-	puts("    -P, --max-part-size RAD   set the maximum particle radius\n");
-
-	puts("    -v, --min-velocity M/S    set the minimum random particle velocity");
-	puts("    -V, --max-velocity M/S    set the maximum random particle velocity\n");
-
-	puts("    -m, --min-part-mass KG   set the minimum particle mass");
-	puts("    -M, --max-part-mass KG   set the maximum particle mass\n");
 
 	puts("  Happy coding! :)\n");
 	exit(ret);
@@ -316,11 +253,6 @@ void init_flags(int argc, char **argv) {
 	arg = LCa_new(); arg -> long_flag = "entities";
 	arg -> short_flag = 'e'; arg -> var = var;
 
-	var = LCv_new(); var -> id = "side_length";
-	var -> fmt = "%lf"; var -> data = &side_length;
-	arg = LCa_new(); arg -> long_flag = "side-length";
-	arg -> short_flag = 's'; arg -> var = var;
-
 	var = LCv_new(); var -> id = "log_freq";
 	var -> fmt = "%zu"; var -> data = &log_freq;
 	arg = LCa_new(); arg -> long_flag = "log-freq";
@@ -336,60 +268,58 @@ void init_flags(int argc, char **argv) {
 	arg = LCa_new(); arg -> long_flag = "exec-time";
 	arg -> short_flag = 'T'; arg -> var = var;
 
-	var = LCv_new(); var -> id = "min_velocity";
-	var -> fmt = "%lf"; var -> data = &min_velocity;
-	arg = LCa_new(); arg -> long_flag = "min-velocity";
-	arg -> short_flag = 'v'; arg -> var = var;
-
-	var = LCv_new(); var -> id = "max_velocity";
-	var -> fmt = "%lf"; var -> data = &max_velocity;
-	arg = LCa_new(); arg -> long_flag = "max-velocity";
-	arg -> short_flag = 'V'; arg -> var = var;
-
-	var = LCv_new(); var -> id = "min_part_size";
-	var -> fmt = "%lf"; var -> data = &min_part_size;
-	arg = LCa_new(); arg -> long_flag = "min-part-size";
-	arg -> short_flag = 'p'; arg -> var = var;
-
-	var = LCv_new(); var -> id = "max_part_size";
-	var -> fmt = "%lf"; var -> data = &max_part_size;
-	arg = LCa_new(); arg -> long_flag = "max-part-size";
-	arg -> short_flag = 'P'; arg -> var = var;
-
-	var = LCv_new(); var -> id = "min_part_mass";
-	var -> fmt = "%lf"; var -> data = &min_part_mass;
-	arg = LCa_new(); arg -> long_flag = "min-part-mass";
-	arg -> short_flag = 'm'; arg -> var = var;
-
-	var = LCv_new(); var -> id = "max_part_mass";
-	var -> fmt = "%lf"; var -> data = &max_part_mass;
-	arg = LCa_new(); arg -> long_flag = "max-part-mass";
-	arg -> short_flag = 'M'; arg -> var = var;
-
 	int ret = LCa_read(argc, argv);
 	if(ret != LCA_OK) help(1);
 }
 
 void renderer(sandbox_t* s, void* arg) {
-	static auto& x2 = get<double>(sandbox.database.at("x position")[0]);
-	static auto& y2 = get<double>(sandbox.database.at("y position")[0]);
-	static double x1{x2}, y1{y2};
+	auto& xs = sandbox.database.at("x position");
+	auto& ys = sandbox.database.at("y position");
 	(void) arg;
 	(void) s;
 
-	if(abs(x1) > side_length || abs(x2) > side_length ||
-		abs(y1) > side_length || abs(y2) > side_length) goto next;
+	auto min_x = 0.0, max_x = 0.0;
+	auto min_y = 0.0, max_y = 0.0;
 
-	LSCl_draw(
-		&buffer,
-		LSCb_getx(&buffer, x1 / side_length),
-		LSCb_gety(&buffer, y1 / side_length),
-		LSCb_getx(&buffer, x2 / side_length),
-		LSCb_gety(&buffer, y2 / side_length)
-	);
+	for(const auto& i: xs) {
+		const auto x = get<double>(i);
+		if(x < min_x) min_x = x;
+		if(x > max_x) max_x = x;
+	}
+
+	for(const auto& i: ys) {
+		const auto y = get<double>(i);
+		if(y < min_y) min_y = y;
+		if(y > max_y) max_y = y;
+	}
+
+	LSCb_clear(&buffer);
+	auto delta_x = max_x - min_x;
+	auto delta_y = max_y - min_y;
+
+	if(delta_x == 0.0) delta_x = 1.0;
+	if(delta_y == 0.0) delta_y = 1.0;
+
+	if(delta_x < delta_y) delta_x = delta_y;
+	else delta_y = delta_x;
+
+	auto it = xs.begin();
+	size_t ind = 0;
+	for(const auto& i: ys) {
+		const auto x = get<double>(*it);
+		const auto y = get<double>(i);
+		
+		LSCb_set(&buffer,
+			LSCb_getx(&buffer, 2.0 * (x - min_x) / delta_x - 1.0),
+			LSCb_gety(&buffer, 2.0 * (y - min_y) / delta_y - 1.0),
+			'0' + ind
+		);
+
+		advance(it, 1);
+		ind++;
+	}
 
 	LSCb_print(&buffer, 1);
-next:	x1 = x2; y1 = y2;
 }
 
 void on_interrupt(int signum) {

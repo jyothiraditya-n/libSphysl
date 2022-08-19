@@ -13,6 +13,8 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
+#include <cmath>
+
 #include <libSphysl/utility.h>
 
 using namespace libSphysl::utility;
@@ -36,4 +38,36 @@ void libSphysl::utility::randomise(
 	for(auto &i: v) {
 		i = distribution(mersenne_engine);
 	}
+}
+
+double vector_t::length() const {
+	return std::sqrt(x * x + y * y + z * z);
+}
+
+double vector_t::dot(const vector_t& v) const {
+	return x * v.x + y * v.y + z * v.z;
+}
+
+vector_t vector_t::cross(const vector_t& v) const {
+	return {
+		(y * v.z) - (v.y * z),
+		(v.x * z) - (x * v.z),
+		(x * v.y) - (v.x * y)
+	};
+}
+
+vector_t vector_t::operator+(const vector_t& v) const {
+	return {x + v.x, y + v.y, z + v.z};
+}
+
+vector_t vector_t::operator-(const vector_t& v) const {
+	return {x - v.x, y - v.y, z - v.z};
+}
+
+vector_t vector_t::operator*(const double d) const {
+	return {x * d, y * d, z * d};
+}
+
+vector_t vector_t::operator/(const double d) const {
+	return {x / d, y / d, z / d};
 }

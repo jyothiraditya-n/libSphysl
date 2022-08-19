@@ -36,17 +36,6 @@ struct arg_entities_t {
 	double &m1, &m2;
 };
 
-static std::pair<double, double>
-roots(const double a, const double b, const double c)
-{
-	const double discriminant = std::sqrt(b * b - 4.0 * a * c);
-
-	return {
-		(-b + discriminant) / (2.0 * a),
-		(-b - discriminant) / (2.0 * a)
-	};
-}
-
 static std::tuple<double, double, double, double> collide_entities(
 	const double p1, const double p2,
 	const double u1, const double u2,
@@ -59,32 +48,22 @@ static std::tuple<double, double, double, double> collide_entities(
 		return {p1, p2, u1, u2};
 	}
 
-	const auto [v1_1, v1_2] = roots(
-		m2 + (m2 * m2 / m1),
-		(-2.0 * m2 * u1) - (2.0 * m2 * m2 * u2 / m1),
-		(m1 * u1 * u1) + (2.0 * m2 * u1 * u2) +
-		(m2 * m2 * u2 * u2 / m1) - (m1 * u1 * u1) -
-		(m2 * u2 * u2)
-	);
+	const auto v1 = (((m1 - m2) * u1) + (2.0 * m2 * u2)) / (m1 + m2);
+	const auto v2 = (((m2 - m1) * u2) + (2.0 * m1 * u1)) / (m2 + m1);
 
-	const auto v2_1 = u2 + (m1 * u1 / m2) - (m1 * v1_1 / m2);
-	const auto v2_2 = u2 + (m1 * u1 / m2) - (m1 * v1_2 / m2);
-
-	auto pp1{p1}, pp2{p2}, v1{u1}, v2{u2};
-	if(!std::isfinite(v1_1)) goto move;
+	auto pp1{p1}, pp2{p2};
 
 	if(delta_p > 0) {
-		v1 = v2_1 >= v1_1? v1_1: v1_2;
-		v2 = v2_1 >= v1_1? v2_1: v2_2;
+		const auto delta_pp = 0.5 * (length_1 + length_2 - delta_p);
+		pp1 -= delta_pp;
+		pp2 += delta_pp;
 	}
 
 	else {
-		v1 = v2_1 <= v1_1? v1_1: v1_2;
-		v2 = v2_1 <= v1_1? v2_1: v2_2;
+		const auto delta_pp = 0.5 * (length_1 + length_2 + delta_p);
+		pp1 += delta_pp;
+		pp2 -= delta_pp;
 	}
-
-move:	pp1 -= delta_p / 2.0;
-	pp2 += delta_p / 2.0;
 
 	return {pp1, pp2, v1, v2};
 }
@@ -127,7 +106,7 @@ static std::pair<double, double> collide_wall(
 	const double p, const double u,
 	const double length_wall, const double length_entity
 ){
-	double pp{}, v{};
+	double pp{p}, v{u};
 
 	if(p + length_entity > length_wall) {
 		pp = length_wall - length_entity;
@@ -214,43 +193,55 @@ std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
 	auto& ms = s -> database["mass"];
 	if(ms.size() != total) ms = ones;
 
+	auto new_arg = [&](std::size_t j, std::size_t i) {
+		return new arg_entities_t{
+			std::get<double>(xs[j]),
+			std::get<double>(ys[j]),
+			std::get<double>(zs[j]),
+
+			std::get<double>(xs[j + i]),
+			std::get<double>(ys[j + i]),
+			std::get<double>(zs[j + i]),
+
+			std::get<double>(v_xs[j]),
+			std::get<double>(v_ys[j]),
+			std::get<double>(v_zs[j]),
+
+			std::get<double>(v_xs[j + i]),
+			std::get<double>(v_ys[j + i]),
+			std::get<double>(v_zs[j + i]),
+
+			std::get<double>(widths[j]),
+			std::get<double>(heights[j]),
+			std::get<double>(depths[j]),
+
+			std::get<double>(widths[j + i]),
+			std::get<double>(heights[j + i]),
+			std::get<double>(depths[j + i]),
+
+			std::get<double>(ms[j]),
+			std::get<double>(ms[j + i])
+		};
+	};
+
 	for(std::size_t i = 1; i < total; i++) {
 		engine.args.clear();
 
-		for(std::size_t j = 0; j + i < total; j++) {
-			auto arg = new arg_entities_t{
-				std::get<double>(xs[j]),
-				std::get<double>(ys[j]),
-				std::get<double>(zs[j]),
-
-				std::get<double>(xs[j + i]),
-				std::get<double>(ys[j + i]),
-				std::get<double>(zs[j + i]),
-
-				std::get<double>(v_xs[j]),
-				std::get<double>(v_ys[j]),
-				std::get<double>(v_zs[j]),
-
-				std::get<double>(v_xs[j + i]),
-				std::get<double>(v_ys[j + i]),
-				std::get<double>(v_zs[j + i]),
-
-				std::get<double>(widths[j]),
-				std::get<double>(heights[j]),
-				std::get<double>(depths[j]),
-
-				std::get<double>(widths[j + i]),
-				std::get<double>(heights[j + i]),
-				std::get<double>(depths[j + i]),
-
-				std::get<double>(ms[j]),
-				std::get<double>(ms[j + i])
-			};
-
+		for(std::size_t k = 0; k < i; k++)
+		for(std::size_t j = k; j + i < total; j += i + 1) {
+			auto arg = new_arg(j, i);
 			engine.args.push_back(reinterpret_cast<void*>(arg));
 		}
 
-		engines.push_back(engine);
+		if(engine.args.size()) engines.push_back(engine);
+		engine.args.clear();
+
+		for(std::size_t j = i; j + i < total; j += i + 1) {
+			auto arg = new_arg(j, i);
+			engine.args.push_back(reinterpret_cast<void*>(arg));
+		}
+
+		if(engine.args.size()) engines.push_back(engine);
 	}
 
 	engine.calculator = calculator_wall;
@@ -279,6 +270,6 @@ std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
 		engine.args.push_back(reinterpret_cast<void*>(arg));	
 	}
 
-	engines.push_back(engine);
+	if(engine.args.size()) engines.push_back(engine);
 	return engines;
 }

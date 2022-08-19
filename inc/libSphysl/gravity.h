@@ -15,15 +15,11 @@
 
 #include <libSphysl.h>
 
-#ifndef LS_LOGGING_H
-#define LS_LOGGING_H 1
-namespace libSphysl::logging {
+#ifndef LS_GRAVITY_H
+#define LS_GRAVITY_H 1
+namespace libSphysl::gravity {
 
-libSphysl::engine_t csv(
-	libSphysl::sandbox_t* s, std::string filename, std::size_t frequency,
-	std::size_t database_entries, std::list<std::string> database_keys,
-	std::list<std::string> config_keys
-);
+std::list<libSphysl::engine_t> classical(libSphysl::sandbox_t* s);
 
 }
 #endif

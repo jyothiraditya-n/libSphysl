@@ -13,6 +13,9 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
+#include <iostream>
+#include <fstream>
+
 #include <libSphysl/logging.h>
 #include <libSphysl/utility.h>
 
@@ -21,11 +24,12 @@ using namespace libSphysl::utility;
 using namespace libSphysl;
 
 struct arg_t {
-	std::ostream &file;
+	std::ofstream file;
+	bool initialised;
 
-	std::list<std::string> config_keys;
-	std::list<std::string> database_keys;
-	std::size_t database_entries;
+	const std::list<std::string> config_keys;
+	const std::list<std::string> database_keys;
+	const std::size_t database_entries;
 
 	std::size_t &tick;
 	std::size_t frequency;
@@ -40,8 +44,22 @@ static std::ostream& operator<<(std::ostream& os, const T& v) {
 static void calculator(sandbox_t* s, void* arg) {
 	auto& data = *reinterpret_cast<arg_t*>(arg);
 	if(data.tick % data.frequency) return;
+	if(data.initialised) goto next;
 
 	for(const auto& i: data.config_keys) {
+		data.file << i << ", ";
+	}
+
+	for(const auto& i: data.database_keys) {
+		for(std::size_t j = 0; j < data.database_entries; j++) {
+			data.file << i << " [" << j << "], ";
+		}
+	}
+
+	data.file << std::endl;
+	data.initialised = true;
+
+next:	for(const auto& i: data.config_keys) {
 		data.file << s -> config.at(i) << ", ";
 	}
 
@@ -57,7 +75,7 @@ static void calculator(sandbox_t* s, void* arg) {
 }
 
 engine_t libSphysl::logging::csv(
-	sandbox_t* s, std::ostream& file, std::size_t frequency,
+	sandbox_t* s, std::string filename, std::size_t frequency,
 	std::size_t database_entries, std::list<std::string> database_keys,
 	std::list<std::string> config_keys
 ){
@@ -70,23 +88,19 @@ engine_t libSphysl::logging::csv(
 	auto& tick = s -> config["simulation tick"];
 	tick = std::size_t(0);
 
-	auto arg = new arg_t{
-		file, config_keys, database_keys, database_entries,
-		std::get<std::size_t>(tick), frequency,
+	arg_t *arg = new arg_t{
+		{}, false, config_keys, database_keys,
+		database_entries, std::get<std::size_t>(tick), frequency
 	};
+
+	if(filename == "" || filename == "-") {
+		arg -> file.basic_ios<char>::rdbuf(std::cout.rdbuf());
+	}
+
+	else {
+		arg -> file = std::ofstream(filename, std::ofstream::out);
+	}
 	
 	engine.args.push_back(reinterpret_cast<void*>(arg));
-
-	for(const auto& i: config_keys) {
-		file << i << ", ";
-	}
-
-	for(const auto& i: database_keys) {
-		for(std::size_t j = 0; j < database_entries; j++) {
-			file << i << " [" << j << "], ";
-		}
-	}
-
-	file << std::endl;
 	return engine;
 }

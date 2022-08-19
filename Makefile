@@ -19,16 +19,19 @@ objs = $(patsubst %.cc,%.o,$(wildcard src/*.cc))
 demos = $(patsubst demo/%.cc,%,$(wildcard demo/*.cc))
 demo_objs = $(patsubst %.cc,%.o,$(wildcard demo/*.cc))
 
-files = $(foreach file,$(objs) $(demo_objs),$(wildcard $(file)))
+files = $(foreach file,$(objs) $(demo_objs) $(demos),$(wildcard $(file)))
 files += $(wildcard *.a)
 
 CLEAN = $(foreach file,$(files),rm $(file);)
 
-CPPFLAGS += -Wall -Wextra -Wpedantic -std=c++17 -g -I inc/ -I libClame/inc/
-CXXFLAGS += -std=c++17 -g
+CPPFLAGS += -Wall -Wextra -Wpedantic -std=c++17 -O3
+CPPFLAGS +=  -I inc/ -I libClame/inc/ -I libScricon/inc/
 
-libs = libClame/libClame.a libSphysl.a
-LD_LIBS ?= -L. -lSphysl -lm -L libClame -lClame -lpthread -lm
+CXXFLAGS += -std=c++17 -O3 -s
+
+libs = libClame/libClame.a libScricon/libScricon.a libSphysl.a
+LD_LIBS += -L. -lSphysl -lm -L libClame -lClame -L libScricon -lScricon
+LD_LIBS += -lpthread -lm
 
 $(objs) : %.o : %.cc $(headers)
 	$(CXX) $(CPPFLAGS) -c $< -o $@
@@ -48,6 +51,9 @@ $(demo_shs) : % : demo/%.sh
 libClame/libClame.a : libClame
 	+cd libClame; make libClame.a; cd ..
 
+libScricon/libScricon.a : libScricon
+	+cd libScricon; make libScricon.a; cd ..
+
 .DEFAULT_GOAL = all
 .PHONY : all clean
 
@@ -55,3 +61,5 @@ all : libSphysl.a $(demos) $(demo_shs)
 
 clean :
 	$(CLEAN)
+	+cd libClame; make clean; cd ..
+	+cd libScricon; make clean; cd ..
