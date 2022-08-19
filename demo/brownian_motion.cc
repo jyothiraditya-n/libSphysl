@@ -278,7 +278,7 @@ void help(int ret) {
 	puts("    -a, --about               print the about dialogue");
 	puts("    -h, --help                print this help dialogue\n");
 
-	puts("    -c, --colour              enable colour output");
+	puts("    -c, --colour              enable ANSI colour support");
 	puts("    -e, --entities NUM        set the number of entities");
 	puts("    -t, --step-time USECS     set the time per simulation step");
 	puts("    -T, --exec-time SECS      set the execution time\n");
@@ -380,9 +380,14 @@ void init_flags(int argc, char **argv) {
 }
 
 void renderer(sandbox_t* s, void* arg) {
-	static auto& x2 = get<double>(sandbox.database.at("x position")[0]);
-	static auto& y2 = get<double>(sandbox.database.at("y position")[0]);
+	static auto& x2s = sandbox.database.at("x position");
+	static auto& y2s = sandbox.database.at("y position");
+	static auto x1s{x2s}, y1s{y2s};
+
+	static auto& x2 = get<double>(x2s[0]);
+	static auto& y2 = get<double>(y2s[0]);
 	static double x1{x2}, y1{y2};
+
 	(void) arg;
 	(void) s;
 
@@ -399,17 +404,70 @@ void renderer(sandbox_t* s, void* arg) {
 
 	LSCb_clear(&buffer);
 
-	uint8_t colour = 256 - lines.size();
+	auto draw_others = [&](){
+		auto y1it = y1s.begin();
+		auto x2it = x2s.begin();
+		auto y2it = y2s.begin();
+		uint8_t c = 17;
+
+		for(const auto& i: x1s) {
+			const auto x1 = get<double>(i);
+			const auto y1 = get<double>(*y1it);
+			const auto x2 = get<double>(*x2it);
+			const auto y2 = get<double>(*y2it);
+
+			if(abs(x1) > side_length || abs(x2) > side_length
+				|| abs(y1) > side_length || c > 230
+				 || abs(y2) > side_length)
+			{break;}
+
+			if(colour) LSCl_drawfg(&buffer,
+				offset_x + scaler(&buffer, x1 / side_length),
+				offset_y + scaler(&buffer, y1 / side_length),
+				offset_x + scaler(&buffer, x2 / side_length),
+				offset_y + scaler(&buffer, y2 / side_length),
+				c
+			);
+
+			else LSCl_set(&buffer,
+				offset_x + scaler(&buffer, x1 / side_length),
+				offset_y + scaler(&buffer, y1 / side_length),
+				offset_x + scaler(&buffer, x2 / side_length),
+				offset_y + scaler(&buffer, y2 / side_length),
+				'.'
+			);
+
+			advance(y1it, 1);
+			advance(x2it, 1);
+			advance(y2it, 1);
+			c++;
+		}
+	};
+
+	if(!colour) draw_others();
+	uint8_t c = 256 - lines.size();
+
 	for(const auto& i: lines) {
-		LSCl_drawfg(&buffer,
+		if(colour && c == 255) {
+			draw_others();
+		}
+
+		if(colour) LSCl_setall(&buffer,
 			offset_x + scaler(&buffer, get<0>(i) / side_length),
 			offset_y + scaler(&buffer, get<1>(i) / side_length),
 			offset_x + scaler(&buffer, get<2>(i) / side_length),
 			offset_y + scaler(&buffer, get<3>(i) / side_length),
-			colour
+			' ', 0, c
 		);
 
-		colour++;
+		else LSCl_draw(&buffer,
+			offset_x + scaler(&buffer, get<0>(i) / side_length),
+			offset_y + scaler(&buffer, get<1>(i) / side_length),
+			offset_x + scaler(&buffer, get<2>(i) / side_length),
+			offset_y + scaler(&buffer, get<3>(i) / side_length)
+		);
+
+		c++;
 	}
 
 	LSCb_print(&buffer, 1);
@@ -418,10 +476,11 @@ void renderer(sandbox_t* s, void* arg) {
 		abs(y1) <= side_length && abs(y2) <= side_length)
 	{
 		lines.push_back({x1, y1, x2, y2});
-		if(lines.size() > 24) lines.pop_front();
+		if(colour && lines.size() > 24) lines.pop_front();
 	}	
 
-	x1 = x2; y1 = y2;
+	x1 = x2; x1s = x2s;
+	y1 = y2; y1s = y2s;
 }
 
 void on_interrupt(int signum) {
