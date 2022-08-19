@@ -14,10 +14,12 @@
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include <chrono>
+#include <cinttypes>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <tuple>
 
 #include <libSphysl.h>
 #include <libSphysl/collision.h>
@@ -63,6 +65,7 @@ LSCb_t buffer;
 
 struct termios cooked, raw;
 size_t height, width;
+bool colour = false;
 
 size_t entities = 100;
 size_t log_freq = 1;
@@ -92,7 +95,7 @@ void renderer(sandbox_t* s, void* arg);
 int main(int argc, char **argv) {
 	name = argv[0];
 	init_flags(argc, argv);
-	
+
 	if(min_part_size == 0.0) {
 		min_part_size = side_length / pow(entities, 1.0 / 3.0);
 		min_part_size -= min_part_size / 5.0;
@@ -207,6 +210,7 @@ int main(int argc, char **argv) {
 
 	buffer.height = height;
 	buffer.width = width;
+	buffer.colour = colour;
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
@@ -274,6 +278,7 @@ void help(int ret) {
 	puts("    -a, --about               print the about dialogue");
 	puts("    -h, --help                print this help dialogue\n");
 
+	puts("    -c, --colour              enable colour output");
 	puts("    -e, --entities NUM        set the number of entities");
 	puts("    -t, --step-time USECS     set the time per simulation step");
 	puts("    -T, --exec-time SECS      set the execution time\n");
@@ -288,8 +293,8 @@ void help(int ret) {
 	puts("    -v, --min-velocity M/S    set the minimum random particle velocity");
 	puts("    -V, --max-velocity M/S    set the maximum random particle velocity\n");
 
-	puts("    -m, --min-part-mass KG   set the minimum particle mass");
-	puts("    -M, --max-part-mass KG   set the maximum particle mass\n");
+	puts("    -m, --min-part-mass KG    set the minimum particle mass");
+	puts("    -M, --max-part-mass KG    set the maximum particle mass\n");
 
 	puts("  Happy coding! :)\n");
 	exit(ret);
@@ -306,7 +311,11 @@ void init_flags(int argc, char **argv) {
 	arg = LCa_new(); arg -> long_flag = "help";
 	arg -> short_flag = 'h'; arg -> pre = help_flag;
 
-	LCv_t *var = LCv_new(); var -> id = "output";
+	LCv_t *var = LCv_new(); var -> id = "colour"; var -> data = &colour;
+	arg = LCa_new(); arg -> long_flag = "colour"; arg -> short_flag = 'c';
+	arg -> var = var; arg -> value = true;
+
+	var = LCv_new(); var -> id = "output";
 	var -> fmt = "%4095c"; var -> data = output;
 	arg = LCa_new(); arg -> long_flag = "output";
 	arg -> short_flag = 'o'; arg -> var = var;
@@ -377,19 +386,42 @@ void renderer(sandbox_t* s, void* arg) {
 	(void) arg;
 	(void) s;
 
-	if(abs(x1) > side_length || abs(x2) > side_length ||
-		abs(y1) > side_length || abs(y2) > side_length) goto next;
+	static auto lines = list{tuple{x1, y1, x2, y2}};
 
-	LSCl_draw(
-		&buffer,
-		LSCb_getx(&buffer, x1 / side_length),
-		LSCb_gety(&buffer, y1 / side_length),
-		LSCb_getx(&buffer, x2 / side_length),
-		LSCb_gety(&buffer, y2 / side_length)
-	);
+	static const auto scaler = buffer.width > buffer.height?
+		LSCb_gety : LSCb_getx;
+
+	static const auto offset_x = buffer.width > buffer.height?
+		(buffer.width - buffer.height) / 2 : 0;
+
+	static const auto offset_y = buffer.height > buffer.width?
+		(buffer.height - buffer.width) / 2 : 0;
+
+	LSCb_clear(&buffer);
+
+	uint8_t colour = 256 - lines.size();
+	for(const auto& i: lines) {
+		LSCl_drawfg(&buffer,
+			offset_x + scaler(&buffer, get<0>(i) / side_length),
+			offset_y + scaler(&buffer, get<1>(i) / side_length),
+			offset_x + scaler(&buffer, get<2>(i) / side_length),
+			offset_y + scaler(&buffer, get<3>(i) / side_length),
+			colour
+		);
+
+		colour++;
+	}
 
 	LSCb_print(&buffer, 1);
-next:	x1 = x2; y1 = y2;
+
+	if(abs(x1) <= side_length && abs(x2) <= side_length &&
+		abs(y1) <= side_length && abs(y2) <= side_length)
+	{
+		lines.push_back({x1, y1, x2, y2});
+		if(lines.size() > 24) lines.pop_front();
+	}	
+
+	x1 = x2; y1 = y2;
 }
 
 void on_interrupt(int signum) {

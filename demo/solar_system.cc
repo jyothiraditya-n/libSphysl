@@ -309,9 +309,25 @@ void renderer(sandbox_t* s, void* arg) {
 		const auto x = get<double>(*it);
 		const auto y = get<double>(i);
 		
-		LSCb_set(&buffer,
-			LSCb_getx(&buffer, 2.0 * (x - min_x) / delta_x - 1.0),
-			LSCb_gety(&buffer, 2.0 * (y - min_y) / delta_y - 1.0),
+		const auto scaler = buffer.width > buffer.height?
+			LSCb_gety : LSCb_getx;
+
+		const auto offset_x = buffer.width > buffer.height?
+			(buffer.width - buffer.height) / 2 : 0;
+
+		const auto offset_y = buffer.height > buffer.width?
+			(buffer.height - buffer.width) / 2 : 0;
+
+
+		LSCb_set(
+			&buffer, offset_x + scaler(
+				&buffer, 2.0 * (x - min_x) / delta_x - 1.0
+			),
+
+			offset_y + scaler(
+				&buffer, 2.0 * (y - min_y) / delta_y - 1.0
+			),
+
 			'0' + ind
 		);
 
