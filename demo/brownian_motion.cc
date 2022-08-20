@@ -65,7 +65,9 @@ LSCb_t buffer;
 
 struct termios cooked, raw;
 size_t height, width;
+
 bool colour = false;
+bool clean = false;
 
 size_t entities = 100;
 size_t log_freq = 1;
@@ -212,6 +214,8 @@ int main(int argc, char **argv) {
 	buffer.width = width;
 	buffer.colour = colour;
 
+	buffer.clear = "\033[48;5;011m\033[38;5;015m ";
+
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
 		tcsetattr(STDIN_FILENO, TCSANOW, &cooked);
@@ -279,6 +283,8 @@ void help(int ret) {
 	puts("    -h, --help                print this help dialogue\n");
 
 	puts("    -c, --colour              enable ANSI colour support");
+	puts("    -C, --clean               don't draw secondary particle velocities.\n");
+
 	puts("    -e, --entities NUM        set the number of entities");
 	puts("    -t, --step-time USECS     set the time per simulation step");
 	puts("    -T, --exec-time SECS      set the execution time\n");
@@ -313,6 +319,10 @@ void init_flags(int argc, char **argv) {
 
 	LCv_t *var = LCv_new(); var -> id = "colour"; var -> data = &colour;
 	arg = LCa_new(); arg -> long_flag = "colour"; arg -> short_flag = 'c';
+	arg -> var = var; arg -> value = true;
+
+	var = LCv_new(); var -> id = "clean"; var -> data = &clean;
+	arg = LCa_new(); arg -> long_flag = "clean"; arg -> short_flag = 'C';
 	arg -> var = var; arg -> value = true;
 
 	var = LCv_new(); var -> id = "output";
@@ -382,105 +392,171 @@ void init_flags(int argc, char **argv) {
 void renderer(sandbox_t* s, void* arg) {
 	static auto& x2s = sandbox.database.at("x position");
 	static auto& y2s = sandbox.database.at("y position");
-	static auto x1s{x2s}, y1s{y2s};
+	static auto& z2s = sandbox.database.at("z position");
+	static auto x1s{x2s}, y1s{y2s}, z1s{z2s};
 
 	static auto& x2 = get<double>(x2s[0]);
 	static auto& y2 = get<double>(y2s[0]);
-	static double x1{x2}, y1{y2};
+	static auto& z2 = get<double>(z2s[0]);
+	static double x1{x2}, y1{y2}, z1{z2};
 
+	static auto lines = list{tuple{x1, y1, z1, x2, y2, z2}};
 	(void) arg;
 	(void) s;
-
-	static auto lines = list{tuple{x1, y1, x2, y2}};
-
-	static const auto scaler = buffer.width > buffer.height?
-		LSCb_gety : LSCb_getx;
-
-	static const auto offset_x = buffer.width > buffer.height?
-		(buffer.width - buffer.height) / 2 : 0;
-
-	static const auto offset_y = buffer.height > buffer.width?
-		(buffer.height - buffer.width) / 2 : 0;
 
 	LSCb_clear(&buffer);
 
 	auto draw_others = [&](){
-		auto y1it = y1s.begin();
-		auto x2it = x2s.begin();
-		auto y2it = y2s.begin();
+		auto y1it = y1s.begin(), z1it = z1s.begin();
+		auto x2it = x2s.begin(), y2it = y2s.begin(), z2it = z2s.begin();
 		uint8_t c = 17;
 
 		for(const auto& i: x1s) {
 			const auto x1 = get<double>(i);
 			const auto y1 = get<double>(*y1it);
+			const auto z1 = get<double>(*z1it);
+
 			const auto x2 = get<double>(*x2it);
 			const auto y2 = get<double>(*y2it);
+			const auto z2 = get<double>(*z2it);
 
 			if(abs(x1) > side_length || abs(x2) > side_length
 				|| abs(y1) > side_length || c > 230
-				 || abs(y2) > side_length)
+				|| abs(y2) > side_length
+				|| abs(z1) > side_length
+				|| abs(z2) > side_length)
 			{break;}
 
 			if(colour) LSCl_drawfg(&buffer,
-				offset_x + scaler(&buffer, x1 / side_length),
-				offset_y + scaler(&buffer, y1 / side_length),
-				offset_x + scaler(&buffer, x2 / side_length),
-				offset_y + scaler(&buffer, y2 / side_length),
+				LSCb_getxz(&buffer,
+					x1 / side_length, z1 - side_length
+				),
+
+				LSCb_getyz(&buffer,
+					y1 / side_length, z1 - side_length
+				),
+
+				LSCb_getxz(&buffer,
+					x2 / side_length, z2 - side_length
+				),
+
+				LSCb_getyz(&buffer,
+					y2 / side_length, z2 - side_length
+				),
+
 				c
 			);
 
 			else LSCl_set(&buffer,
-				offset_x + scaler(&buffer, x1 / side_length),
-				offset_y + scaler(&buffer, y1 / side_length),
-				offset_x + scaler(&buffer, x2 / side_length),
-				offset_y + scaler(&buffer, y2 / side_length),
+				LSCb_getxz(&buffer,
+					x1 / side_length, z1 - side_length
+				),
+
+				LSCb_getyz(&buffer,
+					y1 / side_length, z1 - side_length
+				),
+
+				LSCb_getxz(&buffer,
+					x2 / side_length, z2 - side_length
+				),
+
+				LSCb_getyz(&buffer,
+					y2 / side_length, z2 - side_length
+				),
+
 				'.'
 			);
 
-			advance(y1it, 1);
-			advance(x2it, 1);
-			advance(y2it, 1);
+			LSCb_setz(&buffer,
+				LSCb_getxz(&buffer,
+					x2 / side_length, z2 - side_length
+				),
+
+				LSCb_getyz(&buffer,
+					y2 / side_length, z2 - side_length
+				),
+
+				z2 - side_length, 'o'
+			);
+
+			advance(y1it, 1); advance(z1it, 1);
+			advance(x2it, 1); advance(y2it, 1); advance(z2it, 1);
+
 			c++;
 		}
 	};
 
-	if(!colour) draw_others();
-	uint8_t c = 256 - lines.size();
+	if(!clean) draw_others();
+	uint8_t c = 255;
 
 	for(const auto& i: lines) {
-		if(colour && c == 255) {
-			draw_others();
-		}
+		if(colour) LSCl_setbgz(&buffer,
+			LSCb_getxz(&buffer,
+				get<0>(i) / side_length,
+				get<2>(i) - side_length
+			),
 
-		if(colour) LSCl_setall(&buffer,
-			offset_x + scaler(&buffer, get<0>(i) / side_length),
-			offset_y + scaler(&buffer, get<1>(i) / side_length),
-			offset_x + scaler(&buffer, get<2>(i) / side_length),
-			offset_y + scaler(&buffer, get<3>(i) / side_length),
-			' ', 0, c
+			LSCb_getyz(&buffer,
+				get<1>(i) / side_length,
+				get<2>(i) - side_length
+			),
+
+			get<2>(i) - side_length,
+
+			LSCb_getxz(&buffer,
+				get<3>(i) / side_length,
+				get<5>(i) - side_length
+			),
+
+			LSCb_getyz(&buffer,
+				get<4>(i) / side_length,
+				get<5>(i) - side_length
+			),
+
+			get<5>(i) - side_length, c
 		);
 
-		else LSCl_draw(&buffer,
-			offset_x + scaler(&buffer, get<0>(i) / side_length),
-			offset_y + scaler(&buffer, get<1>(i) / side_length),
-			offset_x + scaler(&buffer, get<2>(i) / side_length),
-			offset_y + scaler(&buffer, get<3>(i) / side_length)
+		else LSCl_drawz(&buffer,
+			LSCb_getxz(&buffer,
+				get<0>(i) / side_length,
+				get<2>(i) - side_length
+			),
+
+			LSCb_getyz(&buffer,
+				get<1>(i) / side_length,
+				get<2>(i) - side_length
+			),
+
+			get<2>(i) - side_length,
+
+			LSCb_getxz(&buffer,
+				get<3>(i) / side_length,
+				get<5>(i) - side_length
+			),
+
+			LSCb_getyz(&buffer,
+				get<4>(i) / side_length,
+				get<5>(i) - side_length
+			),
+
+			get<5>(i) - side_length
 		);
 
-		c++;
+		c--;
 	}
 
 	LSCb_print(&buffer, 1);
 
 	if(abs(x1) <= side_length && abs(x2) <= side_length &&
-		abs(y1) <= side_length && abs(y2) <= side_length)
+		abs(y1) <= side_length && abs(y2) <= side_length &&
+		abs(z1) <= side_length && abs(z2) <= side_length)
 	{
-		lines.push_back({x1, y1, x2, y2});
+		lines.push_back({x1, y1, z1, x2, y2, z2});
 		if(colour && lines.size() > 24) lines.pop_front();
-	}	
+	}
 
-	x1 = x2; x1s = x2s;
-	y1 = y2; y1s = y2s;
+	x1 = x2; y1 = y2; z1 = z2;
+	x1s = x2s; y1s = y2s; z1s = z2s;
 }
 
 void on_interrupt(int signum) {
