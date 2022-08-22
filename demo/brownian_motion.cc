@@ -214,7 +214,8 @@ int main(int argc, char **argv) {
 	buffer.width = width;
 	buffer.colour = colour;
 
-	buffer.clear = "\033[48;5;011m\033[38;5;015m ";
+	buffer.validate = true;
+	buffer.cchs = "\033[48;5;011m\033[38;5;015m ";
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
@@ -420,12 +421,7 @@ void renderer(sandbox_t* s, void* arg) {
 			const auto y2 = get<double>(*y2it);
 			const auto z2 = get<double>(*z2it);
 
-			if(abs(x1) > side_length || abs(x2) > side_length
-				|| abs(y1) > side_length || c > 230
-				|| abs(y2) > side_length
-				|| abs(z1) > side_length
-				|| abs(z2) > side_length)
-			{break;}
+			if(c > 230) break;
 
 			if(colour) LSCl_drawfg(&buffer,
 				LSCb_getxz(&buffer,
@@ -467,7 +463,7 @@ void renderer(sandbox_t* s, void* arg) {
 				'.'
 			);
 
-			LSCb_setz(&buffer,
+			LSCb_setzv(&buffer,
 				LSCb_getxz(&buffer,
 					x2 / side_length, z2 - side_length
 				),
@@ -547,13 +543,8 @@ void renderer(sandbox_t* s, void* arg) {
 
 	LSCb_print(&buffer, 1);
 
-	if(abs(x1) <= side_length && abs(x2) <= side_length &&
-		abs(y1) <= side_length && abs(y2) <= side_length &&
-		abs(z1) <= side_length && abs(z2) <= side_length)
-	{
-		lines.push_back({x1, y1, z1, x2, y2, z2});
-		if(colour && lines.size() > 24) lines.pop_front();
-	}
+	lines.push_back({x1, y1, z1, x2, y2, z2});
+	if(colour && lines.size() > 24) lines.pop_front();
 
 	x1 = x2; y1 = y2; z1 = z2;
 	x1s = x2s; y1s = y2s; z1s = z2s;

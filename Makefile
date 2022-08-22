@@ -27,7 +27,7 @@ CLEAN = $(foreach file,$(files),rm $(file);)
 CPPFLAGS += -Wall -Wextra -Wpedantic -std=c++17 -O3
 CPPFLAGS +=  -I inc/ -I libClame/inc/ -I libScricon/inc/
 
-CXXFLAGS += -std=c++17 -O3 -s
+CXXFLAGS += -std=c++17 -O3
 
 libs = libClame/libClame.a libScricon/libScricon.a libSphysl.a
 LD_LIBS += -L. -lSphysl -lm -L libClame -lClame -L libScricon -lScricon
@@ -49,10 +49,10 @@ $(demo_shs) : % : demo/%.sh
 	cp $< $@; chmod +x $@
 
 libClame/libClame.a : libClame
-	+cd libClame; make libClame.a; cd ..
+	+cd libClame; $(MAKE) libClame.a
 
 libScricon/libScricon.a : libScricon
-	+cd libScricon; make libScricon.a; cd ..
+	+cd libScricon; $(MAKE) libScricon.a
 
 .DEFAULT_GOAL = all
 .PHONY : all clean
@@ -61,5 +61,5 @@ all : libSphysl.a $(demos) $(demo_shs)
 
 clean :
 	$(CLEAN)
-	+cd libClame; make clean; cd ..
-	+cd libScricon; make clean; cd ..
+	+cd libClame; $(MAKE) clean
+	+cd libScricon; $(MAKE) clean
