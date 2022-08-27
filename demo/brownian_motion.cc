@@ -391,6 +391,9 @@ void init_flags(int argc, char **argv) {
 }
 
 void renderer(sandbox_t* s, void* arg) {
+	static auto& tick = get<size_t>(s -> config["simulation tick"]);
+	if(tick % log_freq) return;
+
 	static auto& x2s = sandbox.database.at("x position");
 	static auto& y2s = sandbox.database.at("y position");
 	static auto& z2s = sandbox.database.at("z position");

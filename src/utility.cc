@@ -28,15 +28,23 @@ void libSphysl::utility::null_destructor(engine_t* e) {
 	(void) e;
 }
 
+double libSphysl::utility::random(double min, double max) {
+	std::random_device device;
+	std::mt19937 engine{device()};
+	std::uniform_real_distribution<double> distribution(min, max);
+
+	return distribution(engine);
+}
+
 void libSphysl::utility::randomise(
 	std::vector<data_t> &v, double min, double max
 ){
 	std::random_device device;
-	std::mt19937 mersenne_engine{device()};
+	std::mt19937 engine{device()};
 	std::uniform_real_distribution<double> distribution(min, max);
 
 	for(auto &i: v) {
-		i = distribution(mersenne_engine);
+		i = distribution(engine);
 	}
 }
 

@@ -42,6 +42,7 @@ extern "C" {
 
 	#include <LSC_buffer.h>
 	#include <LSC_error.h>
+	#include <LSC_lines.h>
 }
 
 using namespace std::chrono;
@@ -62,10 +63,10 @@ LSCb_t buffer;
 struct termios cooked, raw;
 size_t height, width;
 
-size_t entities = 255;
 size_t log_freq = 1;
 size_t exec_time = 0;
 size_t step_time = 1;
+size_t calc_depth = 2;
 
 void about();
 void help(int ret);
@@ -83,44 +84,91 @@ int main(int argc, char **argv) {
 	sandbox.config["entity count"] = size_t{10};
 
 	sandbox.add_engine(gravity::classical(&sandbox));
-	sandbox.add_engine(motion::classical(&sandbox));
+	sandbox.add_engine(motion::classical(&sandbox, calc_depth));
 
 	auto& xs = sandbox.database.at("x position");
-	xs[1] = 6.0 * std::pow(10.0, 10.0);
-	xs[2] = -1.0 * std::pow(10.0, 11.0);
-	xs[3] = 1.5 * std::pow(10.0, 11.0);
-	xs[4] = -2.2 * std::pow(10.0, 11.0);
-	xs[5] = 7.8 * std::pow(10.0, 11.0);
-	xs[6] = -1.4 * std::pow(10.0, 12.0);
-	xs[7] = 2.9 * std::pow(10.0, 12.0);
-	xs[8] = -4.5 * std::pow(10.0, 12.0);
-	xs[9] = 6.3 * std::pow(10.0, 12.0);
+	auto& ys = sandbox.database.at("y position");
 
+	auto& v_xs = sandbox.database.at("x velocity");
 	auto& v_ys = sandbox.database.at("y velocity");
-	v_ys[1] = 4.7 * std::pow(10.0, 4.0);
-	v_ys[2] = -3.5 * std::pow(10.0, 4.0);
-	v_ys[3] = 3.0 * std::pow(10.0, 4.0);
-	v_ys[4] = -2.4 * std::pow(10.0, 4.0);
-	v_ys[5] = 1.3 * std::pow(10.0, 4.0);
-	v_ys[6] = -9.7 * std::pow(10.0, 3.0);
-	v_ys[7] = 6.8 * std::pow(10.0, 3.0);
-	v_ys[8] = -5.4 * std::pow(10.0, 3.0);
-	v_ys[9] = 4.7 * std::pow(10.0, 3.0);
 
 	auto& ms = sandbox.database.at("mass");
-	ms[0] = 2.0 * std::pow(10.0, 30.0);
-	ms[1] = 6.1 * std::pow(10.0, 10.0);
-	ms[2] = 4.9 * std::pow(10.0, 24.0);
-	ms[3] = 6.0 * std::pow(10.0, 24.0);
-	ms[4] = 6.4 * std::pow(10.0, 23.0);
-	ms[5] = 1.9 * std::pow(10.0, 27.0);
-	ms[6] = 5.7 * std::pow(10.0, 26.0);
-	ms[7] = 8.7 * std::pow(10.0, 25.0);
-	ms[8] = 1.0 * std::pow(10.0, 26.0);
-	ms[9] = 1.3 * std::pow(10.0, 22.0);
+	ms[0] = 2.0 * pow(10.0, 30.0);
+
+	auto theta = random(-M_PI, M_PI);
+
+	xs[1] = 6.0 * pow(10.0, 10.0) * cos(theta);
+	ys[1] = 6.0 * pow(10.0, 10.0) * sin(theta);
+	v_xs[1] = 4.7 * pow(10.0, 4.0) * -sin(theta);
+	v_ys[1] = 4.7 * pow(10.0, 4.0) * cos(theta);
+	ms[1] = 6.1 * pow(10.0, 10.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[2] = 1.0 * pow(10.0, 11.0) * cos(theta);
+	ys[2] = 1.0 * pow(10.0, 11.0) * sin(theta);
+	v_xs[2] = 3.5 * pow(10.0, 4.0) * -sin(theta);
+	v_ys[2] = 3.5 * pow(10.0, 4.0) * cos(theta);
+	ms[2] = 4.9 * pow(10.0, 24.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[3] = 1.5 * pow(10.0, 11.0) * cos(theta);
+	ys[3] = 1.5 * pow(10.0, 11.0) * sin(theta);
+	v_xs[3] = 3.0 * pow(10.0, 4.0) * -sin(theta);
+	v_ys[3] = 3.0 * pow(10.0, 4.0) * cos(theta);
+	ms[3] = 6.0 * pow(10.0, 24.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[4] = 2.2 * pow(10.0, 11.0) * cos(theta);
+	ys[4] = 2.2 * pow(10.0, 11.0) * sin(theta);
+	v_xs[4] = 2.4 * pow(10.0, 4.0) * -sin(theta);
+	v_ys[4] = 2.4 * pow(10.0, 4.0) * cos(theta);
+	ms[4] = 6.4 * pow(10.0, 23.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[5] = 7.8 * pow(10.0, 11.0) * cos(theta);
+	ys[5] = 7.8 * pow(10.0, 11.0) * sin(theta);
+	v_xs[5] = 1.3 * pow(10.0, 4.0) * -sin(theta);
+	v_ys[5] = 1.3 * pow(10.0, 4.0) * cos(theta);
+	ms[5] = 1.9 * pow(10.0, 27.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[6] = 1.4 * pow(10.0, 12.0) * cos(theta);
+	ys[6] = 1.4 * pow(10.0, 12.0) * sin(theta);
+	v_xs[6] = 9.7 * pow(10.0, 3.0) * -sin(theta);
+	v_ys[6] = 9.7 * pow(10.0, 3.0) * cos(theta);
+	ms[6] = 5.7 * pow(10.0, 26.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[7] = 2.9 * pow(10.0, 12.0) * cos(theta);
+	ys[7] = 2.9 * pow(10.0, 12.0) * sin(theta);
+	v_xs[7] = 6.8 * pow(10.0, 3.0) * -sin(theta);
+	v_ys[7] = 6.8 * pow(10.0, 3.0) * cos(theta);
+	ms[7] = 8.7 * pow(10.0, 25.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[8] = 4.5 * pow(10.0, 12.0) * cos(theta);
+	ys[8] = 4.5 * pow(10.0, 12.0) * sin(theta);
+	v_xs[8] = 5.4 * pow(10.0, 3.0) * -sin(theta);
+	v_ys[8] = 5.4 * pow(10.0, 3.0) * cos(theta);
+	ms[8] = 1.0 * pow(10.0, 26.0);
+
+	theta = random(-M_PI, M_PI);
+
+	xs[9] = 6.3 * pow(10.0, 12.0) * cos(theta);
+	ys[9] = 6.3 * pow(10.0, 12.0) * sin(theta);
+	v_xs[9] = 4.7 * pow(10.0, 3.0) * -sin(theta);
+	v_ys[9] = 4.7 * pow(10.0, 3.0) * cos(theta);
+	ms[9] = 1.3 * pow(10.0, 22.0);
 
 	sandbox.add_engine(constant(&sandbox));
-	sandbox.config.at("time change") = step_time * 24.0 * 3600.0;
+	sandbox.config.at("time change") = step_time * 1.0;
 
 	signal(SIGINT, on_interrupt);
 
@@ -154,6 +202,7 @@ int main(int argc, char **argv) {
 
 	buffer.height = height;
 	buffer.width = width;
+	buffer.validate = true;
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
@@ -166,7 +215,11 @@ int main(int argc, char **argv) {
 	if(strlen(output) && strcmp(output, "-")) {
 		sandbox.add_engine(csv(
 			&sandbox, output, log_freq, 10,
-			{"x acceleration", "y acceleration", "z acceleration"},
+			{
+				"x position", "y position",
+				"x velocity", "y velocity",
+				"x acceleration", "y acceleration",
+			},
 			{"time", "time change"}
 		));
 	}
@@ -221,9 +274,9 @@ void help(int ret) {
 	puts("    -a, --about               print the about dialogue");
 	puts("    -h, --help                print this help dialogue\n");
 
-	puts("    -e, --entities NUM        set the number of entities");
-	puts("    -t, --step-time DAYS      set the time per simulation step");
-	puts("    -T, --exec-time SECS      set the execution time\n");
+	puts("    -t, --step-time SECS      set the time per simulation step");
+	puts("    -T, --exec-time SECS      set the execution time");
+	puts("    -c, --calc-depth N        set the depth of the motion calculus\n");
 
 	puts("    -f, --log-freq N          set the logging to every N cycles");
 	puts("    -o, --output FILE         set the output file\n");
@@ -248,11 +301,6 @@ void init_flags(int argc, char **argv) {
 	arg = LCa_new(); arg -> long_flag = "output";
 	arg -> short_flag = 'o'; arg -> var = var;
 
-	var = LCv_new(); var -> id = "entities";
-	var -> fmt = "%zu"; var -> data = &entities;
-	arg = LCa_new(); arg -> long_flag = "entities";
-	arg -> short_flag = 'e'; arg -> var = var;
-
 	var = LCv_new(); var -> id = "log_freq";
 	var -> fmt = "%zu"; var -> data = &log_freq;
 	arg = LCa_new(); arg -> long_flag = "log-freq";
@@ -268,15 +316,23 @@ void init_flags(int argc, char **argv) {
 	arg = LCa_new(); arg -> long_flag = "exec-time";
 	arg -> short_flag = 'T'; arg -> var = var;
 
+	var = LCv_new(); var -> id = "calc_depth";
+	var -> fmt = "%zu"; var -> data = &calc_depth;
+	arg = LCa_new(); arg -> long_flag = "calc-depth";
+	arg -> short_flag = 'c'; arg -> var = var;
+
 	int ret = LCa_read(argc, argv);
 	if(ret != LCA_OK) help(1);
 }
 
 void renderer(sandbox_t* s, void* arg) {
-	auto& xs = sandbox.database.at("x position");
-	auto& ys = sandbox.database.at("y position");
+	static auto& tick = get<size_t>(s -> config["simulation tick"]);
+	if(tick % log_freq) return;
 	(void) arg;
 	(void) s;
+
+	static auto& xs = sandbox.database.at("x position");
+	static auto& ys = sandbox.database.at("y position");
 
 	auto min_x = 0.0, max_x = 0.0;
 	auto min_y = 0.0, max_y = 0.0;
@@ -293,46 +349,76 @@ void renderer(sandbox_t* s, void* arg) {
 		if(y > max_y) max_y = y;
 	}
 
+	static auto& v_xs = sandbox.database.at("x velocity");
+	static auto& v_ys = sandbox.database.at("y velocity");
+
+	auto min_vx = 0.0, max_vx = 0.0;
+	auto min_vy = 0.0, max_vy = 0.0;
+
+	for(const auto& i: v_xs) {
+		const auto v_x = get<double>(i);
+		if(v_x < min_vx) min_vx = v_x;
+		if(v_x > max_vx) max_vx = v_x;
+	}
+
+	for(const auto& i: v_ys) {
+		const auto v_y = get<double>(i);
+		if(v_y < min_vy) min_vy = v_y;
+		if(v_y > max_vy) max_vy = v_y;
+	}
+
 	LSCb_clear(&buffer);
+
 	auto delta_x = max_x - min_x;
 	auto delta_y = max_y - min_y;
 
 	if(delta_x == 0.0) delta_x = 1.0;
 	if(delta_y == 0.0) delta_y = 1.0;
 
-	if(delta_x < delta_y) delta_x = delta_y;
-	else delta_y = delta_x;
+	auto delta_vx = max_vx - min_vx;
+	auto delta_vy = max_vy - min_vy;
 
-	auto it = xs.begin();
-	size_t ind = 0;
-	for(const auto& i: ys) {
-		const auto x = get<double>(*it);
-		const auto y = get<double>(i);
+	if(delta_vx == 0.0) delta_vx = 1.0;
+	if(delta_vy == 0.0) delta_vy = 1.0;
+
+	const auto delta = delta_x > delta_y? delta_x: delta_y;
+	const auto delta_v = delta_vx > delta_vy? delta_vx: delta_vy;
+
+	auto ix = xs.begin();
+	auto ivx = v_xs.begin();
+	auto ivy = v_ys.begin();
+	auto ind = '0';
+
+	for(const auto& iy: ys) {
+		const auto x = get<double>(*ix);
+		const auto y = get<double>(iy);
+		const auto v_x = get<double>(*ivx);
+		const auto v_y = get<double>(*ivy);
+
+		const auto x_start = LSCb_getx(&buffer,
+				2.0 * (x - min_x) / delta - delta_x / delta
+				- v_x / (delta_v * 5.0)
+			);
+
+		const auto y_start = LSCb_gety(&buffer,
+				2.0 * (y - min_y) / delta - delta_y / delta
+				- v_y / (delta_v * 5.0)
+			);
+
+		const auto x_end = LSCb_getx(&buffer,
+				2.0 * (x - min_x) / delta - delta_x / delta
+			);
+
+		const auto y_end = LSCb_gety(&buffer,
+				2.0 * (y - min_y) / delta - delta_y / delta
+			);
 		
-		const auto scaler = buffer.width > buffer.height?
-			LSCb_gety : LSCb_getx;
+		LSCl_draw(&buffer, x_start, y_start, x_end, y_end);
+		LSCb_setv(&buffer, x_end, y_end, ind++);
 
-		const auto offset_x = buffer.width > buffer.height?
-			(buffer.width - buffer.height) / 2 : 0;
-
-		const auto offset_y = buffer.height > buffer.width?
-			(buffer.height - buffer.width) / 2 : 0;
-
-
-		LSCb_set(
-			&buffer, offset_x + scaler(
-				&buffer, 2.0 * (x - min_x) / delta_x - 1.0
-			),
-
-			offset_y + scaler(
-				&buffer, 2.0 * (y - min_y) / delta_y - 1.0
-			),
-
-			'0' + ind
-		);
-
-		advance(it, 1);
-		ind++;
+		advance(ix, 1);
+		advance(ivx, 1);
+		advance(ivy, 1);
 	}
 
 	LSCb_print(&buffer, 1);

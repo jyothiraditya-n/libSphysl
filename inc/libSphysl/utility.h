@@ -34,17 +34,26 @@ void destructor(libSphysl::engine_t* e) {
 void null_calculator(libSphysl::sandbox_t* s, void* arg);
 void null_destructor(libSphysl::engine_t* e);
 
+template<typename T> T random(T min, T max) {
+	std::random_device device;
+	std::mt19937 engine{device()};
+	std::uniform_int_distribution<T> distribution(min, max);
+
+	return distribution(engine);
+}
+
 template<typename T>
 void randomise(std::vector<libSphysl::data_t> &v, T min, T max) {
 	std::random_device device;
-	std::mt19937 mersenne_engine{device()};
+	std::mt19937 engine{device()};
 	std::uniform_int_distribution<T> distribution(min, max);
 
 	for(auto &i: v) {
-		i = distribution(mersenne_engine);
+		i = distribution(engine);
 	}
 }
 
+double random(double min, double max);
 void randomise(std::vector<libSphysl::data_t> &v, double min, double max);
 
 struct vector_t {

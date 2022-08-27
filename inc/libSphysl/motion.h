@@ -20,6 +20,7 @@
 namespace libSphysl::motion {
 
 libSphysl::engine_t classical(libSphysl::sandbox_t* s);
+libSphysl::engine_t classical(libSphysl::sandbox_t* s, size_t depth);
 
 }
 #endif
