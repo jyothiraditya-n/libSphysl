@@ -14,6 +14,7 @@
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include <cmath>
+
 #include <tuple>
 
 #include <libSphysl/collision.h>

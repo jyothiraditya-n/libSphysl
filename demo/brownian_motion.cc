@@ -13,9 +13,10 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <chrono>
 #include <cinttypes>
 #include <cmath>
+
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <thread>

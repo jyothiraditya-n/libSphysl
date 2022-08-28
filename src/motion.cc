@@ -156,10 +156,9 @@ static void calculator_depth(sandbox_t* s, void* arg) {
 	(void) s;
 
 	if(!data.initialised) {
-		data.a_xs[0].first = data.a_x; data.v_xs[0].first = data.v_x;
-		data.a_ys[0].first = data.a_y; data.v_ys[0].first = data.v_y;
-		data.a_zs[0].first = data.a_z; data.v_zs[0].first = data.v_z;
-		data.initialised = true;
+		data.v_xs[0].first = data.v_x;
+		data.v_ys[0].first = data.v_y;
+		data.v_zs[0].first = data.v_z;
 	}
 
 	for(size_t i = 0; i < data.depth; i++) {
@@ -174,6 +173,14 @@ static void calculator_depth(sandbox_t* s, void* arg) {
 	data.a_x = data.a_xs[0].first = data.F_x / data.m;
 	data.a_y = data.a_ys[0].first = data.F_y / data.m;
 	data.a_z = data.a_zs[0].first = data.F_z / data.m;
+
+	if(!data.initialised) {
+		data.a_xs[0].second = data.a_x;
+		data.a_ys[0].second = data.a_y;
+		data.a_zs[0].second = data.a_z;
+
+		data.initialised = true;
+	}
 
 	data.v_x += data.a_x * data.delta_t;
 	data.v_y += data.a_y * data.delta_t;

@@ -16,7 +16,6 @@
 #include <random>
 #include <algorithm>
 #include <iterator>
-#include <vector>
 
 #include <libSphysl.h>
 

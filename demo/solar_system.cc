@@ -13,8 +13,9 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <chrono>
 #include <cmath>
+
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <thread>
@@ -352,18 +353,15 @@ void renderer(sandbox_t* s, void* arg) {
 	static auto& v_xs = sandbox.database.at("x velocity");
 	static auto& v_ys = sandbox.database.at("y velocity");
 
-	auto min_vx = 0.0, max_vx = 0.0;
-	auto min_vy = 0.0, max_vy = 0.0;
+	auto max_vx = 0.0, max_vy = 0.0;
 
 	for(const auto& i: v_xs) {
-		const auto v_x = get<double>(i);
-		if(v_x < min_vx) min_vx = v_x;
+		const auto v_x = abs(get<double>(i));
 		if(v_x > max_vx) max_vx = v_x;
 	}
 
 	for(const auto& i: v_ys) {
-		const auto v_y = get<double>(i);
-		if(v_y < min_vy) min_vy = v_y;
+		const auto v_y = abs(get<double>(i));
 		if(v_y > max_vy) max_vy = v_y;
 	}
 
@@ -375,14 +373,7 @@ void renderer(sandbox_t* s, void* arg) {
 	if(delta_x == 0.0) delta_x = 1.0;
 	if(delta_y == 0.0) delta_y = 1.0;
 
-	auto delta_vx = max_vx - min_vx;
-	auto delta_vy = max_vy - min_vy;
-
-	if(delta_vx == 0.0) delta_vx = 1.0;
-	if(delta_vy == 0.0) delta_vy = 1.0;
-
 	const auto delta = delta_x > delta_y? delta_x: delta_y;
-	const auto delta_v = delta_vx > delta_vy? delta_vx: delta_vy;
 
 	auto ix = xs.begin();
 	auto ivx = v_xs.begin();
@@ -397,12 +388,12 @@ void renderer(sandbox_t* s, void* arg) {
 
 		const auto x_start = LSCb_getx(&buffer,
 				2.0 * (x - min_x) / delta - delta_x / delta
-				- v_x / (delta_v * 5.0)
+				- v_x / max_vx
 			);
 
 		const auto y_start = LSCb_gety(&buffer,
 				2.0 * (y - min_y) / delta - delta_y / delta
-				- v_y / (delta_v * 5.0)
+				- v_y / max_vy
 			);
 
 		const auto x_end = LSCb_getx(&buffer,
