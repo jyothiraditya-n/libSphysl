@@ -31,8 +31,8 @@ struct arg_t {
 	const std::list<std::string> database_keys;
 	const std::size_t database_entries;
 
-	std::size_t &tick;
-	std::size_t frequency;
+	const std::size_t &tick;
+	const std::size_t frequency;
 };
 
 template <typename T, typename = std::variant_alternative_t<0, T>>

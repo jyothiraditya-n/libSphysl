@@ -22,16 +22,15 @@ using namespace libSphysl::gravity;
 using namespace libSphysl::utility;
 using namespace libSphysl;
 
-static const double G = 6.67430 * std::pow(10.0, -11.0);
-
 struct arg_t {
-	double &x1, &y1, &z1;
-	double &x2, &y2, &z2;
+	const double &x1, &y1, &z1;
+	const double &x2, &y2, &z2;
 
 	double &F1_x, &F1_y, &F1_z;
 	double &F2_x, &F2_y, &F2_z;
 
-	double &m1, &m2;
+	const double &m1, &m2;
+	const double &G;
 };
 
 static void calculator(const sandbox_t* s, void* arg) {
@@ -41,7 +40,7 @@ static void calculator(const sandbox_t* s, void* arg) {
 	const auto delta_p = vector_t{data.x2, data.y2, data.z2}
 		- vector_t{data.x1, data.y1, data.z1};
 
-	const auto F = (delta_p * G * data.m1 * data.m2)
+	const auto F = (delta_p * data.G * data.m1 * data.m2)
 		/ std::pow(delta_p.length(), 3.0);
 
 	data.F1_x += F.x; data.F1_y += F.y; data.F1_z += F.z;
@@ -59,6 +58,9 @@ std::list<engine_t> libSphysl::gravity::classical(sandbox_t* s) {
 	const auto total = std::get<std::size_t>(
 		s -> config.at("entity count")
 	);
+
+	auto& G = s -> config["gravitational constant"]
+		= 6.67430 * std::pow(10.0, -11.0);
 
 	std::vector<data_t> zeros(total, 0.0);
 	std::vector<data_t> ones(total, 1.0);
@@ -101,7 +103,8 @@ std::list<engine_t> libSphysl::gravity::classical(sandbox_t* s) {
 			std::get<double>(F_zs[j + i]),
 
 			std::get<double>(ms[j]),
-			std::get<double>(ms[j + i])
+			std::get<double>(ms[j + i]),
+			std::get<double>(G)
 		};
 	};
 

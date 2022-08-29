@@ -13,16 +13,16 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
+#include <cmath>
+
 #include <libSphysl.h>
 
-#ifndef LS_COLLISION_H
-#define LS_COLLISION_H 1
-namespace libSphysl::collision {
+#ifndef LS_charges_H
+#define LS_charges_H 1
+namespace libSphysl::charges {
 
-std::list<libSphysl::engine_t> rebound_entities(libSphysl::sandbox_t* s);
-
-libSphysl::engine_t rebound_on_walls(libSphysl::sandbox_t *s);
-libSphysl::engine_t warp_at_walls(libSphysl::sandbox_t *s);
+std::list<libSphysl::engine_t> electricity(libSphysl::sandbox_t* s);
+std::list<libSphysl::engine_t> magnetism(libSphysl::sandbox_t* s);
 
 }
 #endif

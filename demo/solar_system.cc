@@ -49,8 +49,6 @@ extern "C" {
 using namespace std::chrono;
 using namespace std;
 
-using namespace libSphysl::logging;
-using namespace libSphysl::time;
 using namespace libSphysl::utility;
 using namespace libSphysl;
 
@@ -168,7 +166,7 @@ int main(int argc, char **argv) {
 	v_ys[9] = 4.7 * pow(10.0, 3.0) * cos(theta);
 	ms[9] = 1.3 * pow(10.0, 22.0);
 
-	sandbox.add_engine(constant(&sandbox));
+	sandbox.add_engine(time::constant(&sandbox));
 	sandbox.config.at("time change") = step_time * 1.0;
 
 	signal(SIGINT, on_interrupt);
@@ -214,7 +212,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(strlen(output) && strcmp(output, "-")) {
-		sandbox.add_engine(csv(
+		sandbox.add_engine(logging::csv(
 			&sandbox, output, log_freq, 10,
 			{
 				"x position", "y position",

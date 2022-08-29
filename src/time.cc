@@ -31,7 +31,7 @@ struct arg_realtime_t {
 	bool initialised;
 
 	double &t, &delta_t;
-	double &min, &max;
+	const double &min, &max;
 
 	std::size_t &tick;
 };

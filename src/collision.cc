@@ -31,10 +31,10 @@ struct arg_entities_t {
 	double &v1_x, &v1_y, &v1_z;
 	double &v2_x, &v2_y, &v2_z;
 
-	double &width_1, &height_1, &depth_1;
-	double &width_2, &height_2, &depth_2;
+	const double &width_1, &height_1, &depth_1;
+	const double &width_2, &height_2, &depth_2;
 
-	double &m1, &m2;
+	const double &m1, &m2;
 };
 
 static std::tuple<double, double, double, double> collide_entities(
@@ -95,60 +95,7 @@ static void calculator_entities(const sandbox_t* s, void* arg) {
 	data.z1 = z1; data.z2 = z2; data.v1_z = v1_z; data.v2_z = v2_z;
 }
 
-struct arg_wall_t {
-	double &x, &y, &z;
-	double &v_x, &v_y, &v_z;
-
-	double &width_wall, &height_wall, &depth_wall;
-	double &width_entity, &height_entity, &depth_entity;
-};
-
-static std::pair<double, double> collide_wall(
-	const double p, const double u,
-	const double length_wall, const double length_entity
-){
-	double pp{p}, v{u};
-
-	if(p + length_entity > length_wall) {
-		pp = length_wall - length_entity;
-		v = u > 0.0? -u: u;
-	}
-
-	else if(p - length_entity < -length_wall) {
-		pp = -length_wall + length_entity;
-		v = u < 0.0? -u: u;
-	}
-
-	return {pp, v};
-}
-
-static void calculator_wall(const sandbox_t* s, void* arg) {
-	auto& data = *reinterpret_cast<arg_wall_t*>(arg);
-	(void) s;
-
-	const auto [x, v_x] = collide_wall(
-		data.x, data.v_x,
-		data.width_wall, data.width_entity
-	);
-
-	data.x = x; data.v_x = v_x;
-
-	const auto [y, v_y] = collide_wall(
-		data.y, data.v_y,
-		data.height_wall, data.height_entity
-	);
-
-	data.y = y; data.v_y = v_y;
-
-	const auto [z, v_z] = collide_wall(
-		data.z, data.v_z,
-		data.depth_wall, data.depth_entity
-	);
-
-	data.z = z; data.v_z = v_z;
-}
-
-std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
+std::list<engine_t> libSphysl::collision::rebound_entities(sandbox_t* s) {
 	std::list<engine_t> engines;
 	engine_t engine;
 
@@ -159,10 +106,6 @@ std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
 	const auto total = std::get<std::size_t>(
 		s -> config.at("entity count")
 	);
-
-	auto& width = s -> config["bounding box width"] = 1.0;
-	auto& height = s -> config["bounding box height"] = 1.0;
-	auto& depth = s -> config["bounding box depth"] = 1.0;
 
 	std::vector<data_t> zeros(total, 0.0);
 	std::vector<data_t> ones(total, 1.0);
@@ -245,12 +188,106 @@ std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
 		if(engine.args.size()) engines.push_back(engine);
 	}
 
-	engine.calculator = calculator_wall;
-	engine.destructor = destructor<arg_wall_t>;
-	engine.args.clear();
+	return engines;
+}
+
+struct arg_wall_rebound_t {
+	double &x, &y, &z;
+	double &v_x, &v_y, &v_z;
+
+	const double &width_wall, &height_wall, &depth_wall;
+	const double &width_entity, &height_entity, &depth_entity;
+};
+
+static std::pair<double, double> collide_wall(
+	const double p, const double u,
+	const double length_wall, const double length_entity
+){
+	double pp{p}, v{u};
+
+	if(p + length_entity > length_wall) {
+		pp = length_wall - length_entity;
+		v = u > 0.0? -u: u;
+	}
+
+	else if(p - length_entity < -length_wall) {
+		pp = -length_wall + length_entity;
+		v = u < 0.0? -u: u;
+	}
+
+	return {pp, v};
+}
+
+static void calculator_wall_rebound(const sandbox_t* s, void* arg) {
+	auto& data = *reinterpret_cast<arg_wall_rebound_t*>(arg);
+	(void) s;
+
+	const auto [x, v_x] = collide_wall(
+		data.x, data.v_x,
+		data.width_wall, data.width_entity
+	);
+
+	data.x = x; data.v_x = v_x;
+
+	const auto [y, v_y] = collide_wall(
+		data.y, data.v_y,
+		data.height_wall, data.height_entity
+	);
+
+	data.y = y; data.v_y = v_y;
+
+	const auto [z, v_z] = collide_wall(
+		data.z, data.v_z,
+		data.depth_wall, data.depth_entity
+	);
+
+	data.z = z; data.v_z = v_z;
+}
+
+engine_t libSphysl::collision::rebound_on_walls(sandbox_t* s) {
+	engine_t engine;
+
+	engine.calculator = calculator_wall_rebound;
+	engine.destructor = destructor<arg_wall_rebound_t>;
+	engine.sandbox = s;
+
+	const auto total = std::get<std::size_t>(
+		s -> config.at("entity count")
+	);
+
+	auto& width = s -> config["bounding box width"] = 1.0;
+	auto& height = s -> config["bounding box height"] = 1.0;
+	auto& depth = s -> config["bounding box depth"] = 1.0;
+
+	std::vector<data_t> zeros(total, 0.0);
+	std::vector<data_t> ones(total, 1.0);
+
+	auto& xs = s -> database["x position"];
+	auto& ys = s -> database["y position"];
+	auto& zs = s -> database["z position"];
+
+	if(xs.size() != total) xs = zeros;
+	if(ys.size() != total) ys = zeros;
+	if(zs.size() != total) zs = zeros;
+
+	auto& v_xs = s -> database["x velocity"];
+	auto& v_ys = s -> database["y velocity"];
+	auto& v_zs = s -> database["z velocity"];
+
+	if(v_xs.size() != total) v_xs = zeros;
+	if(v_ys.size() != total) v_ys = zeros;
+	if(v_zs.size() != total) v_zs = zeros;
+
+	auto& widths = s -> database["bounding box width"];
+	auto& heights = s -> database["bounding box height"];
+	auto& depths = s -> database["bounding box depth"];
+
+	if(widths.size() != total) widths = zeros;
+	if(heights.size() != total) heights = zeros;
+	if(depths.size() != total) depths = zeros;
 
 	for(std::size_t i = 0; i < total; i++) {
-		auto arg = new arg_wall_t{
+		auto arg = new arg_wall_rebound_t{
 			std::get<double>(xs[i]),
 			std::get<double>(ys[i]),
 			std::get<double>(zs[i]),
@@ -271,6 +308,92 @@ std::list<engine_t> libSphysl::collision::box(sandbox_t* s) {
 		engine.args.push_back(reinterpret_cast<void*>(arg));	
 	}
 
-	if(engine.args.size()) engines.push_back(engine);
-	return engines;
+	return engine;
+}
+
+struct arg_wall_warp_t {
+	double &x, &y, &z;
+
+	const double &width_wall, &height_wall, &depth_wall;
+	const double &width_entity, &height_entity, &depth_entity;
+};
+
+static double warp_wall(
+	const double p, const double length_wall, const double length_entity
+){
+	double pp{p};
+
+	if(p + length_entity > length_wall) {
+		pp = -length_wall + length_entity;
+	}
+
+	else if(p - length_entity < -length_wall) {
+		pp = length_wall - length_entity;
+	}
+
+	return pp;
+}
+
+static void calculator_wall_warp(const sandbox_t* s, void* arg) {
+	auto& data = *reinterpret_cast<arg_wall_warp_t*>(arg);
+	(void) s;
+
+	data.x = warp_wall(data.x, data.width_wall, data.width_entity);
+	data.y = warp_wall(data.y, data.height_wall, data.height_entity);
+	data.z = warp_wall(data.z, data.depth_wall, data.depth_entity);
+}
+
+engine_t libSphysl::collision::warp_at_walls(sandbox_t* s) {
+	engine_t engine;
+
+	engine.calculator = calculator_wall_warp;
+	engine.destructor = destructor<arg_wall_warp_t>;
+	engine.sandbox = s;
+
+	const auto total = std::get<std::size_t>(
+		s -> config.at("entity count")
+	);
+
+	auto& width = s -> config["bounding box width"] = 1.0;
+	auto& height = s -> config["bounding box height"] = 1.0;
+	auto& depth = s -> config["bounding box depth"] = 1.0;
+
+	std::vector<data_t> zeros(total, 0.0);
+	std::vector<data_t> ones(total, 1.0);
+
+	auto& xs = s -> database["x position"];
+	auto& ys = s -> database["y position"];
+	auto& zs = s -> database["z position"];
+
+	if(xs.size() != total) xs = zeros;
+	if(ys.size() != total) ys = zeros;
+	if(zs.size() != total) zs = zeros;
+
+	auto& widths = s -> database["bounding box width"];
+	auto& heights = s -> database["bounding box height"];
+	auto& depths = s -> database["bounding box depth"];
+
+	if(widths.size() != total) widths = zeros;
+	if(heights.size() != total) heights = zeros;
+	if(depths.size() != total) depths = zeros;
+
+	for(std::size_t i = 0; i < total; i++) {
+		auto arg = new arg_wall_warp_t{
+			std::get<double>(xs[i]),
+			std::get<double>(ys[i]),
+			std::get<double>(zs[i]),
+
+			std::get<double>(width),
+			std::get<double>(height),
+			std::get<double>(depth),
+
+			std::get<double>(widths[i]),
+			std::get<double>(heights[i]),
+			std::get<double>(depths[i])
+		};
+
+		engine.args.push_back(reinterpret_cast<void*>(arg));	
+	}
+
+	return engine;
 }
