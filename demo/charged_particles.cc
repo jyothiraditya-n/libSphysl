@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 	buffer.colour = colour;
 
 	buffer.validate = LSCB_VALIDATE_SHAPE;
-	buffer.cchs = "\033[48;5;011m\033[38;5;015m ";
+	buffer.cchs = "\033[48;5;195m\033[38;5;015m ";
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {

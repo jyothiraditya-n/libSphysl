@@ -27,7 +27,7 @@ CLEAN = $(foreach file,$(files),rm $(file);)
 CPPFLAGS += -Wall -Wextra -Wpedantic -std=c++17 -Ofast
 CPPFLAGS +=  -I inc/ -I libClame/inc/ -I libScricon/inc/
 
-CXXFLAGS += -std=c++17 -Ofast
+CXXFLAGS += -std=c++17 -Ofast -s
 
 libs = libClame/libClame.a libScricon/libScricon.a libSphysl.a
 LD_LIBS += -L. -lSphysl -lm -L libClame -lClame -L libScricon -lScricon

@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
 	buffer.colour = colour;
 
 	buffer.validate = LSCB_VALIDATE_CHAR;
-	buffer.cchs = "\033[48;5;011m\033[38;5;015m ";
+	buffer.cchs = "\033[48;5;230m\033[38;5;015m ";
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
