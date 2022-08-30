@@ -146,6 +146,7 @@ struct arg_depth_t {
 
 	std::vector<std::pair<double, double>> a_xs, a_ys, a_zs;
 	std::vector<std::pair<double, double>> v_xs, v_ys, v_zs;
+	std::vector<double> coeffs;
 
 	double &F_x, &F_y, &F_z;
 	const double &m;
@@ -196,7 +197,8 @@ static void calculator_depth(sandbox_t* s, void* arg) {
 		data.a_zs[i].first = (data.a_zs[i - 1].first
 			- data.a_zs[i - 1].second) / data.delta_t;
 
-		const size_t integrant = std::pow(data.delta_t, i + 1.0);
+		const double integrant = std::pow(data.delta_t, i + 1.0)
+			/ data.coeffs[i];
 
 		data.v_x += data.a_xs[i].first * integrant;
 		data.v_y += data.a_ys[i].first * integrant;
@@ -221,7 +223,8 @@ static void calculator_depth(sandbox_t* s, void* arg) {
 		data.v_zs[i].first = (data.v_zs[i - 1].first
 			- data.v_zs[i - 1].second) / data.delta_t;
 
-		const size_t integrant = std::pow(data.delta_t, i + 1.0);
+		const double integrant = std::pow(data.delta_t, i + 1.0)
+			/ data.coeffs[i];
 
 		data.x += data.v_xs[i].first * integrant;
 		data.y += data.v_ys[i].first * integrant;
@@ -229,6 +232,16 @@ static void calculator_depth(sandbox_t* s, void* arg) {
 	}
 
 	data.F_x = data.F_y = data.F_z = 0.0;
+}
+
+static size_t factorial(const size_t n) {
+	auto x = 1.0;
+
+	for(size_t i = 2; i <= n; i++) {
+		x *= i;
+	}
+
+	return x;
 }
 
 engine_t libSphysl::motion::classical(sandbox_t *s, size_t depth) {
@@ -284,6 +297,11 @@ engine_t libSphysl::motion::classical(sandbox_t *s, size_t depth) {
 	auto& ms = s -> database["mass"];
 	if(ms.size() != total) ms = ones;
 
+	std::vector<double> coeffs(depth);
+	for(size_t i = 0; i < depth; i++) {
+		coeffs[i] = factorial(i + 1);
+	}
+
 	for(size_t i = 0; i < total; i++) {
 		auto arg = new arg_depth_t{
 			std::get<double>(delta_t),
@@ -303,6 +321,7 @@ engine_t libSphysl::motion::classical(sandbox_t *s, size_t depth) {
 			depth, false,
 			pairs, pairs, pairs,
 			pairs, pairs, pairs,
+			coeffs,
 
 			std::get<double>(F_xs[i]),
 			std::get<double>(F_ys[i]),

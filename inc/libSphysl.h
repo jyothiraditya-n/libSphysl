@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <cstddef>
+
 #include <functional>
 #include <list>
 #include <map>
@@ -73,8 +74,8 @@ struct sandbox_t {
 	config_t config{};
 
 	std::list<engine_t> engines;
-	void add_engine(const engine_t e);
-	void add_engine(const std::list<engine_t> e);
+	void add_worksets(const engine_t e);
+	void add_worksets(const std::list<engine_t> e);
 
 	sandbox_t();
 	~sandbox_t();

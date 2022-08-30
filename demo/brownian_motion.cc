@@ -118,29 +118,7 @@ int main(int argc, char **argv) {
 
 	sandbox.config["entity count"] = size_t{entities + 1};
 
-	sandbox.add_engine(collision::rebound_entities(&sandbox));
-	sandbox.add_engine(collision::rebound_on_walls(&sandbox));
-
-	sandbox.config["bounding box width"] = side_length;
-	sandbox.config["bounding box height"] = side_length;
-	sandbox.config["bounding box depth"] = side_length;
-
-	randomise(
-		sandbox.database["bounding box width"],
-		min_part_size, max_part_size
-	);
-
-	randomise(
-		sandbox.database["bounding box height"],
-		min_part_size, max_part_size
-	);
-
-	randomise(
-		sandbox.database["bounding box depth"],
-		min_part_size, max_part_size
-	);
-
-	sandbox.add_engine(motion::classical(&sandbox));
+	sandbox.add_worksets(motion::classical(&sandbox));
 
 	randomise(
 		sandbox.database["x position"],
@@ -177,7 +155,29 @@ int main(int argc, char **argv) {
 		min_part_mass, max_part_mass
 	);
 
-	sandbox.add_engine(time::constant(&sandbox));
+	sandbox.add_worksets(collision::rebound_entities(&sandbox));
+	sandbox.add_worksets(collision::rebound_on_walls(&sandbox));
+
+	sandbox.config["bounding box width"] = side_length;
+	sandbox.config["bounding box height"] = side_length;
+	sandbox.config["bounding box depth"] = side_length;
+
+	randomise(
+		sandbox.database["bounding box width"],
+		min_part_size, max_part_size
+	);
+
+	randomise(
+		sandbox.database["bounding box height"],
+		min_part_size, max_part_size
+	);
+
+	randomise(
+		sandbox.database["bounding box depth"],
+		min_part_size, max_part_size
+	);
+
+	sandbox.add_worksets(time::constant(&sandbox));
 	sandbox.config["time change"] = step_time * pow(10.0, -6.0);
 
 	signal(SIGINT, on_interrupt);
@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 	buffer.width = width;
 	buffer.colour = colour;
 
-	buffer.validate = true;
+	buffer.validate = LSCB_VALIDATE_CHAR;
 	buffer.cchs = "\033[48;5;011m\033[38;5;015m ";
 
 	ret = LSCb_alloc(&buffer);
@@ -226,14 +226,14 @@ int main(int argc, char **argv) {
 	}
 
 	if(strlen(output) && strcmp(output, "-")) {
-		sandbox.add_engine(logging::csv(
+		sandbox.add_worksets(logging::csv(
 			&sandbox, output, log_freq, 10,
 			{"x position", "y position", "z position"},
 			{"time", "time change"}
 		));
 	}
 
-	sandbox.add_engine(
+	sandbox.add_worksets(
 		engine_t{renderer, null_destructor, &sandbox, {NULL}}
 	);
 

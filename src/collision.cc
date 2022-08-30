@@ -260,7 +260,6 @@ engine_t libSphysl::collision::rebound_on_walls(sandbox_t* s) {
 	auto& depth = s -> config["bounding box depth"] = 1.0;
 
 	std::vector<data_t> zeros(total, 0.0);
-	std::vector<data_t> ones(total, 1.0);
 
 	auto& xs = s -> database["x position"];
 	auto& ys = s -> database["y position"];
@@ -321,17 +320,15 @@ struct arg_wall_warp_t {
 static double warp_wall(
 	const double p, const double length_wall, const double length_entity
 ){
-	double pp{p};
-
 	if(p + length_entity > length_wall) {
-		pp = -length_wall + length_entity;
+		return -length_wall + length_entity;
 	}
 
 	else if(p - length_entity < -length_wall) {
-		pp = length_wall - length_entity;
+		return length_wall - length_entity;
 	}
 
-	return pp;
+	else return p;
 }
 
 static void calculator_wall_warp(const sandbox_t* s, void* arg) {
@@ -359,7 +356,6 @@ engine_t libSphysl::collision::warp_at_walls(sandbox_t* s) {
 	auto& depth = s -> config["bounding box depth"] = 1.0;
 
 	std::vector<data_t> zeros(total, 0.0);
-	std::vector<data_t> ones(total, 1.0);
 
 	auto& xs = s -> database["x position"];
 	auto& ys = s -> database["y position"];

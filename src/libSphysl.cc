@@ -33,14 +33,15 @@ workset_t::workset_t(sandbox_t* s, const engine_t e) {
 	concurrency = total > concurrency? concurrency: total;
 
 	const auto per_thread = total / concurrency;
-	const auto first_thread = per_thread + (total % concurrency);
+	const auto first_threads = total % concurrency;
 
 	listing_t listing = listing_t();
 	listing.first = e.calculator;
 
 	auto it = e.args.begin();
 	for(size_t i = 0; i < concurrency; i++) {
-		const auto limit = i? per_thread: first_thread;
+		const auto limit = i < first_threads?
+			per_thread + 1 : per_thread;
 
 		for(size_t j = 0; j < limit; j++) {
 			listing.second.push_back(*it);
@@ -82,16 +83,16 @@ void workset_t::run() {
 	}
 }
 
-void sandbox_t::add_engine(const engine_t e) {
+void sandbox_t::add_worksets(const engine_t e) {
 	engines.push_back(e);
 
 	workset_t workset(this, e);
 	worksets.push_back(workset);
 }
 
-void sandbox_t::add_engine(const std::list<engine_t> e) {
+void sandbox_t::add_worksets(const std::list<engine_t> e) {
 	for(const auto& i: e) {
-		this -> add_engine(i);
+		this -> add_worksets(i);
 	}
 }
 

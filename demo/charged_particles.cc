@@ -68,22 +68,22 @@ size_t height, width;
 bool colour = false;
 bool clean = false;
 
-size_t entities = 100;
+size_t entities = 5;
 size_t log_freq = 1;
 size_t exec_time = 0;
 size_t step_time = 1;
-size_t calc_depth = 2;
+size_t calc_depth = 15;
 
-double side_length = 10.0;
+double side_length = 1.0;
 
 double min_velocity = -7.5 * pow(10.0, 5.0);
 double max_velocity = 7.5 * pow(10.0, 5.0);
 
-double min_part_charge = -1.6 * pow(10.0, -19.0) * 6.0 * pow(10.0, 23.0);
-double max_part_charge = 1.6 * pow(10.0, -19.0) * 6.0 * pow(10.0, 23.0);
+double min_part_charge = -1.602176634 * pow(10.0, -19.0);
+double max_part_charge = -1.602176634 * pow(10.0, -19.0);
 
-double min_part_mass = 0.01;
-double max_part_mass = 0.01;
+double min_part_mass = 9.1093837015 * pow(10.0, -31.0);
+double max_part_mass = 9.1093837015 * pow(10.0, -31.0);
 
 void about();
 void help(int ret);
@@ -100,16 +100,11 @@ int main(int argc, char **argv) {
 
 	sandbox.config["entity count"] = size_t{entities + 1};
 
-	sandbox.add_engine(charges::electricity(&sandbox));
-	sandbox.add_engine(charges::magnetism(&sandbox));
+	sandbox.add_worksets(charges::electricity(&sandbox));
+	sandbox.add_worksets(charges::magnetism(&sandbox));
 	randomise(sandbox.database["charge"], min_part_charge, max_part_charge);
 
-	sandbox.add_engine(motion::classical(&sandbox, calc_depth));
-
-	sandbox.add_engine(collision::warp_at_walls(&sandbox));
-	sandbox.config["bounding box width"] = side_length;
-	sandbox.config["bounding box height"] = side_length;
-	sandbox.config["bounding box depth"] = side_length;
+	sandbox.add_worksets(motion::classical(&sandbox, calc_depth));
 
 	randomise(
 		sandbox.database["x position"],
@@ -146,8 +141,13 @@ int main(int argc, char **argv) {
 		min_part_mass, max_part_mass
 	);
 
-	sandbox.add_engine(time::constant(&sandbox));
-	sandbox.config["time change"] = step_time * pow(10.0, -6.0);
+	sandbox.add_worksets(collision::rebound_on_walls(&sandbox));
+	sandbox.config["bounding box width"] = side_length;
+	sandbox.config["bounding box height"] = side_length;
+	sandbox.config["bounding box depth"] = side_length;
+
+	sandbox.add_worksets(time::constant(&sandbox));
+	sandbox.config["time change"] = step_time * pow(10.0, -9.0);
 
 	signal(SIGINT, on_interrupt);
 
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 	buffer.width = width;
 	buffer.colour = colour;
 
-	buffer.validate = true;
+	buffer.validate = LSCB_VALIDATE_SHAPE;
 	buffer.cchs = "\033[48;5;011m\033[38;5;015m ";
 
 	ret = LSCb_alloc(&buffer);
@@ -195,14 +195,14 @@ int main(int argc, char **argv) {
 	}
 
 	if(strlen(output) && strcmp(output, "-")) {
-		sandbox.add_engine(logging::csv(
+		sandbox.add_worksets(logging::csv(
 			&sandbox, output, log_freq, 10,
 			{"x position", "y position", "z position"},
 			{"time", "time change"}
 		));
 	}
 
-	sandbox.add_engine(
+	sandbox.add_worksets(
 		engine_t{renderer, null_destructor, &sandbox, {NULL}}
 	);
 
@@ -257,7 +257,7 @@ void help(int ret) {
 
 	puts("    -s, --side-length METRES  set the side length of the container");
 	puts("    -e, --entities NUM        set the number of entities");
-	puts("    -t, --step-time USECS     set the time per simulation step");
+	puts("    -t, --step-time NANOSECS  set the time per simulation step");
 	puts("    -T, --exec-time SECS      set the execution time");
 	puts("    -d, --calc-depth N        set the depth of the motion calculus\n");
 

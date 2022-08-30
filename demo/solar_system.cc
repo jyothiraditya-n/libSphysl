@@ -82,8 +82,8 @@ int main(int argc, char **argv) {
 
 	sandbox.config["entity count"] = size_t{10};
 
-	sandbox.add_engine(gravity::classical(&sandbox));
-	sandbox.add_engine(motion::classical(&sandbox, calc_depth));
+	sandbox.add_worksets(gravity::classical(&sandbox));
+	sandbox.add_worksets(motion::classical(&sandbox, calc_depth));
 
 	auto& xs = sandbox.database.at("x position");
 	auto& ys = sandbox.database.at("y position");
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
 	v_ys[9] = 4.7 * pow(10.0, 3.0) * cos(theta);
 	ms[9] = 1.3 * pow(10.0, 22.0);
 
-	sandbox.add_engine(time::constant(&sandbox));
+	sandbox.add_worksets(time::constant(&sandbox));
 	sandbox.config.at("time change") = step_time * 1.0;
 
 	signal(SIGINT, on_interrupt);
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
 
 	buffer.height = height;
 	buffer.width = width;
-	buffer.validate = true;
+	buffer.validate = LSCB_VALIDATE_CHAR;
 
 	ret = LSCb_alloc(&buffer);
 	if(ret != LSCE_OK) {
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(strlen(output) && strcmp(output, "-")) {
-		sandbox.add_engine(logging::csv(
+		sandbox.add_worksets(logging::csv(
 			&sandbox, output, log_freq, 10,
 			{
 				"x position", "y position",
@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
 		));
 	}
 
-	sandbox.add_engine(
+	sandbox.add_worksets(
 		engine_t{renderer, null_destructor, &sandbox, {NULL}}
 	);
 
@@ -402,8 +402,8 @@ void renderer(sandbox_t* s, void* arg) {
 				2.0 * (y - min_y) / delta - delta_y / delta
 			);
 		
-		LSCl_draw(&buffer, x_start, y_start, x_end, y_end);
-		LSCb_setv(&buffer, x_end, y_end, ind++);
+		LSCl_drawz(&buffer, x_start, y_start, -0.1, x_end, y_end, -0.1);
+		LSCb_setzv(&buffer, x_end, y_end, 0.0, ind++);
 
 		advance(ix, 1);
 		advance(ivx, 1);

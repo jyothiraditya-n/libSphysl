@@ -37,11 +37,11 @@ static void calculator(const sandbox_t* s, void* arg) {
 	auto& data = *reinterpret_cast<arg_t*>(arg);
 	(void) s;
 
-	const auto delta_p = vector_t{data.x2, data.y2, data.z2}
+	const auto r = vector_t{data.x2, data.y2, data.z2}
 		- vector_t{data.x1, data.y1, data.z1};
 
-	const auto F = (delta_p * data.G * data.m1 * data.m2)
-		/ std::pow(delta_p.length(), 3.0);
+	const auto F = (r * data.G * data.m1 * data.m2)
+		/ std::pow(r.length(), 3.0);
 
 	data.F1_x += F.x; data.F1_y += F.y; data.F1_z += F.z;
 	data.F2_x -= F.x; data.F2_y -= F.y; data.F2_z -= F.z;
