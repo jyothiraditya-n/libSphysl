@@ -30,7 +30,7 @@ void destructor(libSphysl::engine_t* e) {
 	}
 }
 
-void null_calculator(libSphysl::sandbox_t* s, void* arg);
+void null_calculator(void* arg);
 void null_destructor(libSphysl::engine_t* e);
 
 template<typename T> T random(T min, T max) {

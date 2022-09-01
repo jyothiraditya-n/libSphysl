@@ -20,8 +20,8 @@
 using namespace libSphysl::utility;
 using namespace libSphysl;
 
-void libSphysl::utility::null_calculator(libSphysl::sandbox_t* s, void* arg) {
-	(void) s; (void) arg;
+void libSphysl::utility::null_calculator(void* arg) {
+	(void) arg;
 }
 
 void libSphysl::utility::null_destructor(engine_t* e) {
