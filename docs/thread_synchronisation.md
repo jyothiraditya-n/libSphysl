@@ -48,15 +48,15 @@ start thread 2 | | |
 sets `finished` flag of sandbox to `false` | | | blocks on locking `start` mutex
 starts main thread | | |
 returns to caller | checks `finished` flag; doesn't exit | |
- | calls `run()` on workset | |
- | sets listing of thread 1 | |
- | unlocks `start` mutex of thread 1 | |
- | sets listing of thread 2 | locks `start` mutex |
- | unlocks `start` mutex of thread 2 | locks `stop` mutex |
- | blocks on locking `start` mutex of thread 1 | unlocks `start` mutex | locks `start` mutex
- | locks `start` mutex of thread 1 | executes listing | locks `stop` mutex
- | blocks on locking `start` mutex of thread 2 | unlocks `stop` mutex | unlocks `start` mutex
- | locks `start` mutex of thread 2 | checks `finished` flag; loops | executes listing
+- | calls `run()` on workset | |
+- | sets listing of thread 1 | |
+- | unlocks `start` mutex of thread 1 | |
+- | sets listing of thread 2 | locks `start` mutex |
+- | unlocks `start` mutex of thread 2 | locks `stop` mutex |
+- | blocks on locking `start` mutex of thread 1 | unlocks `start` mutex | locks `start` mutex
+- | locks `start` mutex of thread 1 | executes listing | locks `stop` mutex
+- | blocks on locking `start` mutex of thread 2 | unlocks `stop` mutex | unlocks `start` mutex
+- | locks `start` mutex of thread 2 | checks `finished` flag; loops | executes listing
 calls `stop()` | locks `stop` mutex of thread 1 | blocks on locking `start` mutex | unlocks `stop` mutex
 sets `finished` flag of sandbox to `true` | locks `stop` mutex of thread 2 | | blocks on locking `start` mutex
 waits for main thread to join | checks `finished` flag; exits | |
@@ -64,17 +64,17 @@ sets listing for thread 1 | | |
 sets `finished` flag for thread 1 to `true` | | |
 unlocks `start` mutex for thread 1 | | |
 waits for thread 1 to join | | locks `start` mutex |
- | | locks `stop` mutex |
- | | unlocks `start` mutex |
- | | executes listing |
- | | unlocks `stop` mutex |
- | | checks `finished` flag; exits |
+- | | locks `stop` mutex |
+- | | unlocks `start` mutex |
+- | | executes listing |
+- | | unlocks `stop` mutex |
+- | | checks `finished` flag; exits |
 sets `finished` flag for thread 2 to `true` |
 unlocks `start` mutex for thread 2 |
 waits for thread 2 to join | | | locks `start` mutex
- | | | locks `stop` mutex
- | | | unlocks `start` mutex
- | | | executes listing
- | | | unlocks `stop` mutex
- | | | checks `finished` flag; exits
+- | | | locks `stop` mutex
+- | | | unlocks `start` mutex
+- | | | executes listing
+- | | | unlocks `stop` mutex
+- | | | checks `finished` flag; exits
 returns to caller | | |
