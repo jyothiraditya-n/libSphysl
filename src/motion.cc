@@ -16,7 +16,7 @@
 #include <libSphysl/motion.h>
 #include <libSphysl/utility.h>
 
-struct arg_simple_t {
+struct arg_t {
 	const double &delta_t;
 	const size_t start, stop;
 
@@ -26,10 +26,17 @@ struct arg_simple_t {
 
 	std::vector<double> &F_xs, &F_ys, &F_zs;
 	const std::vector<double> &ms;
+
+	const size_t length, depth;
+	bool initialised;
+
+	std::vector<std::vector<std::pair<double, double>>> dv_xs, dv_ys, dv_zs;
+	std::vector<std::vector<std::pair<double, double>>> da_xs, da_ys, da_zs;
+	std::vector<double> coeffs;
 };
 
 static void calculator_simple(void* arg) {
-	auto& data = *reinterpret_cast<arg_simple_t*>(arg);
+	auto& data = *reinterpret_cast<arg_t*>(arg);
 
 	for(size_t i = data.start; i < data.stop; i++) {
 		data.a_xs[i] = data.F_xs[i] / data.ms[i];
@@ -48,191 +55,98 @@ static void calculator_simple(void* arg) {
 	}
 }
 
-libSphysl::engine_t libSphysl::motion::classical(libSphysl::sandbox_t* s) {
-	libSphysl::engine_t engine;
+static void calculator_predictive(void* arg) {
+	auto& data = *reinterpret_cast<arg_t*>(arg);
 
-	engine.calculator = calculator_simple;
-	engine.destructor = libSphysl::utility::destructor<arg_simple_t>;
+	size_t e = 0, ei = data.start;
+loop_1:	if(e >= data.length) goto next;
 
-	const auto total = std::get<std::size_t>(
-		s -> config.at("entity count")
-	);
+	if(!data.initialised) {
+		data.dv_xs[e][0].first = data.v_xs[ei];
+		data.dv_ys[e][0].first = data.v_ys[ei];
+		data.dv_zs[e][0].first = data.v_zs[ei];
+	}
 
-	auto concurrency = s -> threads.size();
+	for(size_t j = 0; j < data.depth; j++) {
+		data.da_xs[e][j].second = data.da_xs[e][j].first;
+		data.da_ys[e][j].second = data.da_ys[e][j].first;
+		data.da_zs[e][j].second = data.da_zs[e][j].first;
 
-	concurrency = total > concurrency? concurrency: total;
+		data.dv_xs[e][j].second = data.dv_xs[e][j].first;
+		data.dv_ys[e][j].second = data.dv_ys[e][j].first;
+		data.dv_zs[e][j].second = data.dv_zs[e][j].first;
+	}
 
-	const auto per_thread = total / concurrency;
-	const auto first_threads = total % concurrency;
+	data.a_xs[ei] = data.da_xs[e][0].first = data.F_xs[ei] / data.ms[ei];
+	data.a_ys[ei] = data.da_ys[e][0].first = data.F_ys[ei] / data.ms[ei];
+	data.a_zs[ei] = data.da_zs[e][0].first = data.F_zs[ei] / data.ms[ei];
+
+	if(!data.initialised) {
+		data.da_xs[e][0].second = data.a_xs[ei];
+		data.da_ys[e][0].second = data.a_ys[ei];
+		data.da_zs[e][0].second = data.a_zs[ei];
+	}
+
+	e++;
+	goto loop_1;
+
+next:	data.initialised = true;
 	
-	auto& delta_t = s -> config["time change"];
-	delta_t = libSphysl::default_time_change;
+	e = 0; ei = data.start;
+loop_2:	if(e >= data.length) return;
 
-	std::vector<double> zeros(total, 0.0);
-	std::vector<double> ones(total, 1.0);
-
-	auto& xs = s -> database["x position"];
-	auto& ys = s -> database["y position"];
-	auto& zs = s -> database["z position"];
-
-	if(xs.size() != total) xs = zeros;
-	if(ys.size() != total) ys = zeros;
-	if(zs.size() != total) zs = zeros;
-
-	auto& v_xs = s -> database["x velocity"];
-	auto& v_ys = s -> database["y velocity"];
-	auto& v_zs = s -> database["z velocity"];
-
-	if(v_xs.size() != total) v_xs = zeros;
-	if(v_ys.size() != total) v_ys = zeros;
-	if(v_zs.size() != total) v_zs = zeros;
-
-	auto& a_xs = s -> database["x acceleration"];
-	auto& a_ys = s -> database["y acceleration"];
-	auto& a_zs = s -> database["z acceleration"];
-
-	if(a_xs.size() != total) a_xs = zeros;
-	if(a_ys.size() != total) a_ys = zeros;
-	if(a_zs.size() != total) a_zs = zeros;
-
-	auto& F_xs = s -> database["x force"];
-	auto& F_ys = s -> database["y force"];
-	auto& F_zs = s -> database["z force"];
-
-	if(F_xs.size() != total) F_xs = zeros;
-	if(F_ys.size() != total) F_ys = zeros;
-	if(F_zs.size() != total) F_zs = zeros;
-
-	auto& ms = s -> database["mass"];
-
-	if(ms.size() != total) ms = ones;
-
-	for(size_t i = 0; i < total; i++) {
-		auto arg = new arg_t{
-			std::get<double>(delta_t),
-
-			std::get<double>(xs[i]),
-			std::get<double>(ys[i]),
-			std::get<double>(zs[i]),
-
-			std::get<double>(v_xs[i]),
-			std::get<double>(v_ys[i]),
-			std::get<double>(v_zs[i]),
-
-			std::get<double>(a_xs[i]),
-			std::get<double>(a_ys[i]),
-			std::get<double>(a_zs[i]),
-
-			std::get<double>(F_xs[i]),
-			std::get<double>(F_ys[i]),
-			std::get<double>(F_zs[i]),
-
-			std::get<double>(ms[i])
-		};
-
-		engine.args.push_back(reinterpret_cast<void*>(arg));
-	}
-
-	return engine;
-}
-
-struct arg_depth_t {
-	const double &delta_t;
-
-	double &x, &y, &z;
-	double &v_x, &v_y, &v_z;
-	double &a_x, &a_y, &a_z;
-
-	const size_t depth;
-	bool initialised;
-
-	std::vector<std::pair<double, double>> a_xs, a_ys, a_zs;
-	std::vector<std::pair<double, double>> v_xs, v_ys, v_zs;
-	std::vector<double> coeffs;
-
-	double &F_x, &F_y, &F_z;
-	const double &m;
-};
-
-static void calculator_depth(void* arg) {
-	auto& data = *reinterpret_cast<arg_depth_t*>(arg);
-
-	if(!data.initialised) {
-		data.v_xs[0].first = data.v_x;
-		data.v_ys[0].first = data.v_y;
-		data.v_zs[0].first = data.v_z;
-	}
-
-	for(size_t i = 0; i < data.depth; i++) {
-		data.a_xs[i].second = data.a_xs[i].first;
-		data.a_ys[i].second = data.a_ys[i].first;
-		data.a_zs[i].second = data.a_zs[i].first;
-		data.v_xs[i].second = data.v_xs[i].first;
-		data.v_ys[i].second = data.v_ys[i].first;
-		data.v_zs[i].second = data.v_zs[i].first;
-	}
-
-	data.a_x = data.a_xs[0].first = data.F_x / data.m;
-	data.a_y = data.a_ys[0].first = data.F_y / data.m;
-	data.a_z = data.a_zs[0].first = data.F_z / data.m;
-
-	if(!data.initialised) {
-		data.a_xs[0].second = data.a_x;
-		data.a_ys[0].second = data.a_y;
-		data.a_zs[0].second = data.a_z;
-
-		data.initialised = true;
-	}
-
-	data.v_x += data.a_x * data.delta_t;
-	data.v_y += data.a_y * data.delta_t;
-	data.v_z += data.a_z * data.delta_t;
+	data.v_xs[ei] += data.a_xs[ei] * data.delta_t;
+	data.v_ys[ei] += data.a_ys[ei] * data.delta_t;
+	data.v_zs[ei] += data.a_zs[ei] * data.delta_t;
 
 	for(size_t i = 1; i < data.depth; i++) {
-		data.a_xs[i].first = (data.a_xs[i - 1].first
-			- data.a_xs[i - 1].second) / data.delta_t;
+		data.da_xs[e][i].first = (data.da_xs[e][i - 1].first
+			- data.da_xs[e][i - 1].second) / data.delta_t;
 
-		data.a_ys[i].first = (data.a_ys[i - 1].first
-			- data.a_ys[i - 1].second) / data.delta_t;
+		data.da_ys[e][i].first = (data.da_ys[e][i - 1].first
+			- data.da_ys[e][i - 1].second) / data.delta_t;
 
-		data.a_zs[i].first = (data.a_zs[i - 1].first
-			- data.a_zs[i - 1].second) / data.delta_t;
+		data.da_zs[e][i].first = (data.da_zs[e][i - 1].first
+			- data.da_zs[e][i - 1].second) / data.delta_t;
 
 		const double integrant = std::pow(data.delta_t, i + 1.0)
 			/ data.coeffs[i];
 
-		data.v_x += data.a_xs[i].first * integrant;
-		data.v_y += data.a_ys[i].first * integrant;
-		data.v_z += data.a_zs[i].first * integrant;
+		data.v_xs[ei] += data.da_xs[e][i].first * integrant;
+		data.v_ys[ei] += data.da_ys[e][i].first * integrant;
+		data.v_zs[ei] += data.da_zs[e][i].first * integrant;
 	}
 
-	data.v_xs[0].first = data.v_x;
-	data.v_ys[0].first = data.v_y;
-	data.v_zs[0].first = data.v_z;
+	data.dv_xs[e][0].first = data.v_xs[ei];
+	data.dv_ys[e][0].first = data.v_ys[ei];
+	data.dv_zs[e][0].first = data.v_zs[ei];
 
-	data.x += data.v_x * data.delta_t;
-	data.y += data.v_y * data.delta_t;
-	data.z += data.v_z * data.delta_t;
+	data.xs[ei] += data.v_xs[ei] * data.delta_t;
+	data.ys[ei] += data.v_ys[ei] * data.delta_t;
+	data.zs[ei] += data.v_zs[ei] * data.delta_t;
 
 	for(size_t i = 1; i < data.depth; i++) {
-		data.v_xs[i].first = (data.v_xs[i - 1].first
-			- data.v_xs[i - 1].second) / data.delta_t;
+		data.dv_xs[i][e].first = (data.dv_xs[e][i - 1].first
+			- data.dv_xs[e][i - 1].second) / data.delta_t;
 
-		data.v_ys[i].first = (data.v_ys[i - 1].first
-			- data.v_ys[i - 1].second) / data.delta_t;
+		data.dv_ys[i][e].first = (data.dv_ys[e][i - 1].first
+			- data.dv_ys[e][i - 1].second) / data.delta_t;
 
-		data.v_zs[i].first = (data.v_zs[i - 1].first
-			- data.v_zs[i - 1].second) / data.delta_t;
+		data.dv_zs[i][e].first = (data.dv_zs[e][i - 1].first
+			- data.dv_zs[e][i - 1].second) / data.delta_t;
 
 		const double integrant = std::pow(data.delta_t, i + 1.0)
 			/ data.coeffs[i];
 
-		data.x += data.v_xs[i].first * integrant;
-		data.y += data.v_ys[i].first * integrant;
-		data.z += data.v_zs[i].first * integrant;
+		data.xs[ei] += data.dv_xs[e][i].first * integrant;
+		data.ys[ei] += data.dv_ys[e][i].first * integrant;
+		data.zs[ei] += data.dv_zs[e][i].first * integrant;
 	}
 
-	data.F_x = data.F_y = data.F_z = 0.0;
+	data.F_xs[ei] = data.F_ys[ei] = data.F_zs[ei] = 0.0;
+
+	e++; ei++;
+	goto loop_2;
 }
 
 static size_t factorial(const size_t n) {
@@ -245,94 +159,139 @@ static size_t factorial(const size_t n) {
 	return x;
 }
 
-engine_t libSphysl::motion::classical_predictive(sandbox_t *s, size_t depth) {
-	engine_t engine;
+template<bool predictive>
+libSphysl::engine_t generator(libSphysl::sandbox_t *s, size_t depth) {
+	libSphysl::engine_t engine;
 
-	engine.calculator = calculator_depth;
-	engine.destructor = destructor<arg_depth_t>;
-	engine.sandbox = s;
+	engine.calculator = predictive?
+		calculator_predictive : calculator_simple;
 
-	const auto total = std::get<std::size_t>(
-		s -> config.at("entity count")
+	engine.destructor = libSphysl::utility::destructor<arg_t>;
+
+	const auto& total = std::get<size_t>(
+		libSphysl::get_config_entry(s, "entity count")
 	);
+
+	auto concurrency = s -> threads.size();
+	concurrency = total > concurrency? concurrency: total;
+
+	const auto per_thread = total / concurrency;
+	const auto first_threads = total % concurrency;
 	
-	auto& delta_t = s -> config["time change"];
-	delta_t = 1.0 / 1000000.0;
+	const auto& delta_t = libSphysl::get_config_entry(s, "time change");
 
-	std::vector<data_t> zeros(total, 0.0);
-	std::vector<data_t> ones(total, 1.0);
-	std::vector<std::pair<double, double>> pairs(depth, {0.0, 0.0});
+	auto& xs = libSphysl::get_database_entry(s, "x position");
+	auto& ys = libSphysl::get_database_entry(s, "y position");
+	auto& zs = libSphysl::get_database_entry(s, "z position");
 
-	auto& xs = s -> database["x position"];
-	auto& ys = s -> database["y position"];
-	auto& zs = s -> database["z position"];
+	auto& v_xs = libSphysl::get_database_entry(s, "x velocity");
+	auto& v_ys = libSphysl::get_database_entry(s, "y velocity");
+	auto& v_zs = libSphysl::get_database_entry(s, "z velocity");
 
-	if(xs.size() != total) xs = zeros;
-	if(ys.size() != total) ys = zeros;
-	if(zs.size() != total) zs = zeros;
+	auto& a_xs = libSphysl::get_database_entry(s, "x acceleration");
+	auto& a_ys = libSphysl::get_database_entry(s, "y acceleration");
+	auto& a_zs = libSphysl::get_database_entry(s, "z acceleration");
 
-	auto& v_xs = s -> database["x velocity"];
-	auto& v_ys = s -> database["y velocity"];
-	auto& v_zs = s -> database["z velocity"];
+	auto& F_xs = libSphysl::get_database_entry(s, "x force");
+	auto& F_ys = libSphysl::get_database_entry(s, "y force");
+	auto& F_zs = libSphysl::get_database_entry(s, "z force");
 
-	if(v_xs.size() != total) v_xs = zeros;
-	if(v_ys.size() != total) v_ys = zeros;
-	if(v_zs.size() != total) v_zs = zeros;
+	const auto& ms = libSphysl::get_database_entry(s, "mass");
 
-	auto& a_xs = s -> database["x acceleration"];
-	auto& a_ys = s -> database["y acceleration"];
-	auto& a_zs = s -> database["z acceleration"];
+	auto initialiser = [&]() {
+		if constexpr(!predictive) return [&](
+			size_t start, size_t stop, size_t length
+		){
+			(void) length;
+		
+			return new arg_t{
+				std::get<double>(delta_t),
+				start, stop,
 
-	if(a_xs.size() != total) a_xs = zeros;
-	if(a_ys.size() != total) a_ys = zeros;
-	if(a_zs.size() != total) a_zs = zeros;
+				std::get<std::vector<double>>(xs),
+				std::get<std::vector<double>>(ys),
+				std::get<std::vector<double>>(zs),
 
-	auto& F_xs = s -> database["x force"];
-	auto& F_ys = s -> database["y force"];
-	auto& F_zs = s -> database["z force"];
+				std::get<std::vector<double>>(v_xs),
+				std::get<std::vector<double>>(v_ys),
+				std::get<std::vector<double>>(v_zs),
 
-	if(F_xs.size() != total) F_xs = zeros;
-	if(F_ys.size() != total) F_ys = zeros;
-	if(F_zs.size() != total) F_zs = zeros;
+				std::get<std::vector<double>>(a_xs),
+				std::get<std::vector<double>>(a_ys),
+				std::get<std::vector<double>>(a_zs),
 
-	auto& ms = s -> database["mass"];
-	if(ms.size() != total) ms = ones;
+				std::get<std::vector<double>>(F_xs),
+				std::get<std::vector<double>>(F_ys),
+				std::get<std::vector<double>>(F_zs),
 
-	std::vector<double> coeffs(depth);
-	for(size_t i = 0; i < depth; i++) {
-		coeffs[i] = factorial(i + 1);
-	}
+				std::get<std::vector<double>>(ms),
 
-	for(size_t i = 0; i < total; i++) {
-		auto arg = new arg_depth_t{
-			std::get<double>(delta_t),
-
-			std::get<double>(xs[i]),
-			std::get<double>(ys[i]),
-			std::get<double>(zs[i]),
-
-			std::get<double>(v_xs[i]),
-			std::get<double>(v_ys[i]),
-			std::get<double>(v_zs[i]),
-
-			std::get<double>(a_xs[i]),
-			std::get<double>(a_ys[i]),
-			std::get<double>(a_zs[i]),
-
-			depth, false,
-			pairs, pairs, pairs,
-			pairs, pairs, pairs,
-			coeffs,
-
-			std::get<double>(F_xs[i]),
-			std::get<double>(F_ys[i]),
-			std::get<double>(F_zs[i]),
-
-			std::get<double>(ms[i])
+				{}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+			};
 		};
 
+		else return [&](size_t start, size_t stop, size_t length) {
+			static std::vector<
+				std::vector<std::pair<double, double>>
+
+			> pairs(length, {depth, {0.0, 0.0}});
+
+			static std::vector<double> coeffs(depth);
+			if(!coeffs[0]) {
+				for(size_t i = 0; i < depth; i++) {
+					coeffs[i] = factorial(i + 1);
+				}
+			}
+
+			return new arg_t{
+				std::get<double>(delta_t),
+				start, stop,
+
+				std::get<std::vector<double>>(xs),
+				std::get<std::vector<double>>(ys),
+				std::get<std::vector<double>>(zs),
+
+				std::get<std::vector<double>>(v_xs),
+				std::get<std::vector<double>>(v_ys),
+				std::get<std::vector<double>>(v_zs),
+
+				std::get<std::vector<double>>(a_xs),
+				std::get<std::vector<double>>(a_ys),
+				std::get<std::vector<double>>(a_zs),
+
+				std::get<std::vector<double>>(F_xs),
+				std::get<std::vector<double>>(F_ys),
+				std::get<std::vector<double>>(F_zs),
+
+				std::get<std::vector<double>>(ms),
+
+				length, depth, false,
+				pairs, pairs, pairs,
+				pairs, pairs, pairs,
+				coeffs
+			};
+		};
+	}();
+
+	size_t start = 0;
+	for(size_t i = 0; i < concurrency; i++) {
+		const auto stop = i < first_threads?
+			start + per_thread + 1 : start + per_thread;
+
+		const auto arg = initialiser(start, stop, stop - start);
+
 		engine.args.push_back(reinterpret_cast<void*>(arg));
+		start = stop;
 	}
 
 	return engine;
+}
+
+libSphysl::engine_t libSphysl::motion::simple(libSphysl::sandbox_t *s) {
+	return generator<false>(s, 0);
+}
+
+libSphysl::engine_t
+libSphysl::motion::predictive(libSphysl::sandbox_t *s, size_t depth) {
+	return generator<true>(s, depth);
 }

@@ -21,6 +21,10 @@ double libSphysl::utility::vector_t::length() const {
 	return std::sqrt(x * x + y * y + z * z);
 }
 
+double libSphysl::utility::vector_t::lengthsq() const {
+	return x * x + y * y + z * z;
+}
+
 libSphysl::utility::vector_t libSphysl::utility::vector_t::operator-() const {
 	return {-x, -y, -z};
 }

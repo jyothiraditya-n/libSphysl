@@ -19,8 +19,8 @@
 #define LS_MOTION_H 1
 namespace libSphysl::motion {
 
-libSphysl::engine_t classical_simple(libSphysl::sandbox_t* s);
-libSphysl::engine_t classical_predictive(libSphysl::sandbox_t* s, size_t depth);
+libSphysl::engine_t simple(libSphysl::sandbox_t* s);
+libSphysl::engine_t predictive(libSphysl::sandbox_t* s, size_t depth);
 
 }
 #endif

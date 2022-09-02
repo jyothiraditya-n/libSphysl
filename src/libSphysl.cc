@@ -236,3 +236,152 @@ void libSphysl::sandbox_t::stop() {
 		i.thread.join();
 	}
 }
+
+/* This helper function initialises a data_t with a value if the value has the
+ * type we provide in the template instantiation. On success it returns true,
+ * else it returns false. */
+
+template<typename T>
+static bool initialise_data(
+	libSphysl::data_t& data,
+	const libSphysl::data_t val
+){
+	/* If the type matches, set the value and return true, else false. */
+	if(std::holds_alternative<T>(val)) {
+		data = std::get<T>(val);
+		return true;
+	}
+
+	else return false;
+}
+
+libSphysl::data_t&
+libSphysl::get_config_entry(libSphysl::sandbox_t* s, const std::string id) {
+
+	/* Get the current data in the config and the default value for this
+	 * id. Although operator[] will insert in a map, it'll be a default-
+	 * initialised variant which won't have any type, so it's benign. */
+	const auto val = libSphysl::default_configs[id];
+	auto& data = s -> config[id];
+
+	/* Try to set the value for every type we support, if nothing matches
+	 * the type of the default value, assume there was no default value and
+	 * return an uninitialised data_t. */
+	if(initialise_data<bool>(data, val)) return data;
+	if(initialise_data<size_t>(data, val)) return data;
+	if(initialise_data<std::intmax_t>(data, val)) return data;
+	if(initialise_data<double>(data, val)) return data;
+	if(initialise_data<std::complex<double>>(data, val)) return data;
+
+	return data;
+}
+
+/* This helper function initialises a vector of data_t's with a value if the
+ * value has the type we provide in the template instantiation. On success it
+ * returns true, else it returns false. */
+
+/* If the vector was already initialised with data of this type, we don't do
+ * anything and return true. This prevents resetting vectors multiple times
+ * between engine generations, which could become rather expensive. */
+
+template<typename T>
+static bool initialise_vector(
+	libSphysl::data_vector_t& vec, const size_t total,
+	const libSphysl::data_t val
+){
+	/* Don't do anything if the data is initialised; return true. */
+	if(std::holds_alternative<std::vector<T>>(vec)) {
+		if(std::get<std::vector<T>>(vec).size() == total) {
+			return true;
+		}
+	}
+
+	/* If the type matches, set the value and return true, else false. */
+	if(std::holds_alternative<T>(val)) {
+		vec = std::vector<T>(total, std::get<T>(val));
+		return true;
+	}
+
+	return false;
+}
+
+/* This helper function initialises a vector of data_t's with given values if
+ * they have the type we provide in the template instantiation. On success it
+ * returns true, else it returns false. */
+
+/* Same as before, don't do anything if the vector's already initialised. */
+
+template<typename T>
+static bool initialise_vector(
+	libSphysl::data_vector_t& vec, const size_t total,
+	const libSphysl::data_t min, const libSphysl::data_t max,
+	const libSphysl::data_t val
+){
+	/* Don't do anything if the data is initialised; return true. */
+	if(std::holds_alternative<std::vector<T>>(vec)) {
+		if(std::get<std::vector<T>>(vec).size() == total) {
+			return true;
+		}
+	}
+
+	/* If the type matches for the value, set the values and return true. */
+	if(std::holds_alternative<T>(val)) {
+		vec = std::vector<T>(total, std::get<T>(val));
+		return true;
+	}
+
+	/* If the type matches for the range, randomise the values accordingly
+	 * and return true. */
+	if(std::holds_alternative<T>(min)) {
+		auto values = std::vector<T>(total);
+
+		libSphysl::utility::randomise(
+			values, std::get<T>(min), std::get<T>(max)
+		);
+
+		vec = values;
+		return true;
+	}
+
+	return false;
+}
+
+libSphysl::data_vector_t&
+libSphysl::get_database_entry(libSphysl::sandbox_t* s, const std::string id) {
+	const auto total = std::get<std::size_t>(
+		s -> config.at("entity count")
+	);
+
+	/* Get the current data in the database and the defaults for this id
+	 * Although operator[] will insert in a map, it'll be a default-
+	 * initialised variant which won't have any type, so it's benign. */
+	const auto val = libSphysl::default_database_values[id];
+	const auto min = libSphysl::default_database_minimums[id];
+	const auto max = libSphysl::default_database_maximums[id];
+	auto& vec = s -> database[id];
+
+	/* Try to set the values for every type we support, if nothing matches
+	 * the type of the default value, assume there were no default values
+	 * and return with a default-initialised vector of doubles. */
+	if(initialise_vector<bool>(vec, total, val)) {
+		return vec;
+	}
+
+	else if(initialise_vector<size_t>(vec, total, min, max, val)) {
+		return vec;
+	}
+
+	else if(initialise_vector<std::intmax_t>(vec, total, min, max, val)) {
+		return vec;
+	}
+
+	else if(initialise_vector<double>(vec, total, min, max, val)) {
+		return vec;
+	}
+
+	if(initialise_vector<std::complex<double>>(vec, total, val)) {
+		return vec;
+	}
+
+	else return vec = std::vector<double>(total);
+}

@@ -90,17 +90,10 @@ struct data_t {
 };
 
 static data_t get_data(libSphysl::sandbox_t* s) {
-	/* Get the variables we need from the config and then reset them to
-	 * their default values. This very simply guarantees the std::variant's
-	 * will be of the correct type. */
-	auto& t = s -> config["time"];
-	t = libSphysl::default_time;
-
-	auto& delta_t = s -> config["time change"];
-	delta_t = libSphysl::default_time_change;
-
-	auto& tick = s -> config["simulation tick"];
-	tick = libSphysl::default_simulation_tick;
+	/* Get the variables we need from the config. */
+	auto& t = libSphysl::get_config_entry(s, "time");
+	auto& delta_t = libSphysl::get_config_entry(s, "time change");
+	auto& tick = libSphysl::get_config_entry(s, "simulation tick");
 
 	/* Return the references to the correct data type of the variants. */
 	return {
@@ -150,11 +143,8 @@ libSphysl::engine_t libSphysl::time::constrained(libSphysl::sandbox_t* s) {
 	auto [t, delta_t, tick] = get_data(s);
 
 	/* Get our constraints. */ 
-	auto& min = s -> config["minimum time change"];
-	min = libSphysl::default_minimum_time_change;
-
-	auto& max = s -> config["maximum time change"];
-	max = libSphysl::default_maximum_time_change;
+	auto& min = libSphysl::get_config_entry(s, "minimum time change");
+	auto& max = libSphysl::get_config_entry(s, "maximum time change");
 
 	auto arg = new arg_t{
 		t, delta_t, tick, // Core simulation data.

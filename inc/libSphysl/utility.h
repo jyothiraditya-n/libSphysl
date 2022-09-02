@@ -27,6 +27,7 @@ struct vector_t {
 	double x, y, z;
 
 	double length() const;
+	double lengthsq() const;
 	vector_t operator-() const; 
 
 	double dot(const vector_t& v) const;

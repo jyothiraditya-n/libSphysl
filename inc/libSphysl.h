@@ -211,12 +211,76 @@ struct sandbox_t {
 /* The following are stored into a sandbox_t's config when an engine generator
  * needs to create a variable it depends on. */
 
-inline double default_time = 0.0; // seconds
-inline size_t default_simulation_tick = 0; // units
+config_t default_configs{
+	{"entity count", size_t{0}}, // units
 
-inline double default_time_change = std::pow(10.0, -6.0); // seconds
-inline double default_minimum_time_change = std::pow(10.0, -7.0);
-inline double default_maximum_time_change = std::pow(10.0, -5.0);
+	{"time", 0.0}, // seconds
+	{"tick", size_t{0}}, // units
+
+	{"time change", std::pow(10.0, -6.0)}, // seconds
+	{"minimum time change", std::pow(10.0, -7.0)},
+	{"maximum time change", std::pow(10.0, -5.0)}
+};
+
+/* The following define the ranges for randomly generating data for variables
+ * in a sandbox_t's database, when an engine generator needs to create any
+ * variable as an engine dependency. */
+
+config_t default_database_values{};
+
+config_t default_database_minimums{
+	{"x position", 0.0}, // metres
+	{"y position", 0.0},
+	{"z position", 0.0},
+
+	{"x velocity", 0.0}, // metres/second
+	{"y velocity", 0.0},
+	{"z velocity", 0.0},
+
+	{"x acceleration", 0.0}, // metres/second^2
+	{"y acceleration", 0.0},
+	{"z acceleration", 0.0},
+
+	{"x force", 0.0}, // netwons
+	{"y force", 0.0},
+	{"z force", 0.0},
+
+	{"mass", 1.0} // kilogrammes
+};
+
+config_t default_database_maximums{
+	{"x position", 0.0}, // metres
+	{"y position", 0.0},
+	{"z position", 0.0},
+
+	{"x velocity", 0.0}, // metres/second
+	{"y velocity", 0.0},
+	{"z velocity", 0.0},
+
+	{"x acceleration", 0.0}, // metres/second^2
+	{"y acceleration", 0.0},
+	{"z acceleration", 0.0},
+
+	{"x force", 0.0}, // netwons
+	{"y force", 0.0},
+	{"z force", 0.0},
+
+	{"mass", 1.0} // kilogrammes
+};
+
+/* Function Declarations */
+
+/* This function finds the config entry in a sandbox_t and returns it, but if
+ * it doesn't exist, it generates it with the default value as specified
+ * above. */
+
+data_t& get_config_entry(sandbox_t* s, const std::string id);
+
+/* This function finds the database entry in a sandbox_t and returns it, but if
+ * it doesn't exist, it generates it with random data according to the above
+ * defaults. The understanding is this will be used by engine generators. */
+
+data_vector_t& get_database_entry(sandbox_t* s, const std::string id);
 
 }
 #endif
