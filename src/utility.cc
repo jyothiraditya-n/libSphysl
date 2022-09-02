@@ -17,18 +17,56 @@
 
 #include <libSphysl/utility.h>
 
-using namespace libSphysl::utility;
-using namespace libSphysl;
+double libSphysl::utility::vector_t::length() const {
+	return std::sqrt(x * x + y * y + z * z);
+}
+
+libSphysl::utility::vector_t libSphysl::utility::vector_t::operator-() const {
+	return {-x, -y, -z};
+}
+
+double libSphysl::utility::vector_t::dot(const vector_t& v) const {
+	return x * v.x + y * v.y + z * v.z;
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::cross(const vector_t& v) const {
+	return {
+		(y * v.z) - (v.y * z),
+		(v.x * z) - (x * v.z),
+		(x * v.y) - (v.x * y)
+	};
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::operator+(const vector_t& v) const {
+	return {x + v.x, y + v.y, z + v.z};
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::operator-(const vector_t& v) const {
+	return {x - v.x, y - v.y, z - v.z};
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::operator*(const double d) const {
+	return {x * d, y * d, z * d};
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::operator/(const double d) const {
+	return {x / d, y / d, z / d};
+}
 
 void libSphysl::utility::null_calculator(void* arg) {
 	(void) arg;
 }
 
-void libSphysl::utility::null_destructor(engine_t* e) {
+void libSphysl::utility::null_destructor(libSphysl::engine_t* e) {
 	(void) e;
 }
 
-double libSphysl::utility::random(double min, double max) {
+double libSphysl::utility::random(const double min, const double max) {
 	std::random_device device;
 	std::mt19937 engine{device()};
 	std::uniform_real_distribution<double> distribution(min, max);
@@ -37,7 +75,7 @@ double libSphysl::utility::random(double min, double max) {
 }
 
 void libSphysl::utility::randomise(
-	std::vector<data_t> &v, double min, double max
+	std::vector<double>& v, const double min, const double max
 ){
 	std::random_device device;
 	std::mt19937 engine{device()};
@@ -46,36 +84,4 @@ void libSphysl::utility::randomise(
 	for(auto &i: v) {
 		i = distribution(engine);
 	}
-}
-
-double vector_t::length() const {
-	return std::sqrt(x * x + y * y + z * z);
-}
-
-double vector_t::dot(const vector_t& v) const {
-	return x * v.x + y * v.y + z * v.z;
-}
-
-vector_t vector_t::cross(const vector_t& v) const {
-	return {
-		(y * v.z) - (v.y * z),
-		(v.x * z) - (x * v.z),
-		(x * v.y) - (v.x * y)
-	};
-}
-
-vector_t vector_t::operator+(const vector_t& v) const {
-	return {x + v.x, y + v.y, z + v.z};
-}
-
-vector_t vector_t::operator-(const vector_t& v) const {
-	return {x - v.x, y - v.y, z - v.z};
-}
-
-vector_t vector_t::operator*(const double d) const {
-	return {x * d, y * d, z * d};
-}
-
-vector_t vector_t::operator/(const double d) const {
-	return {x / d, y / d, z / d};
 }

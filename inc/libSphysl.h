@@ -15,6 +15,7 @@
 
 /* Including Standard Libraries */
 
+#include <cmath>
 #include <cstdint>
 #include <cstddef>
 
@@ -120,7 +121,7 @@ struct workset_t {
 struct binary_t; // Forward declaration.
 
 typedef std::variant<
-	bool, std::size_t, std::intmax_t, double, std::complex<double>,
+	bool, size_t, std::intmax_t, double, std::complex<double>,
 	binary_t
 
 > data_t;
@@ -135,7 +136,7 @@ typedef std::variant<
  * having to cache pointers to every single value. */
 
 typedef std::variant<
-	std::vector<bool>, std::vector<std::size_t>, std::vector<intmax_t>,
+	std::vector<bool>, std::vector<size_t>, std::vector<intmax_t>,
 	std::vector<double>, std::vector<std::complex<double>>,
 	std::vector<binary_t>
 
@@ -153,7 +154,7 @@ typedef std::variant<
 
 struct binary_t {
 	void* value{};
-	std::size_t length{};
+	size_t length{};
 };
 
 /* The choice of strings and the default map are done both to make the code
@@ -165,6 +166,8 @@ struct binary_t {
 
 typedef std::map<std::string, data_vector_t> database_t;
 typedef std::map<std::string, data_t> config_t;
+
+/* Combined Type Definitions */
 
 /* Putting it all together, we have the sandbox_t itself, storing data and code
  * components as discussed earlier */
@@ -194,7 +197,7 @@ struct sandbox_t {
 	 * using a fixed number of compute threads */
 
 	sandbox_t();
-	sandbox_t(std::size_t concurrency);
+	sandbox_t(size_t concurrency);
 
 	std::thread main_thread{};
 	bool finished = false; // Used for signalling.
@@ -202,6 +205,18 @@ struct sandbox_t {
 	void start(); // Used for starting and stopping the simulation.
 	void stop();
 };
+
+/* Constants Declarations */
+
+/* The following are stored into a sandbox_t's config when an engine generator
+ * needs to create a variable it depends on. */
+
+inline double default_time = 0.0; // seconds
+inline size_t default_simulation_tick = 0; // units
+
+inline double default_time_change = std::pow(10.0, -6.0); // seconds
+inline double default_minimum_time_change = std::pow(10.0, -7.0);
+inline double default_maximum_time_change = std::pow(10.0, -5.0);
 
 }
 #endif

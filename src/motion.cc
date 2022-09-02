@@ -13,61 +13,63 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <cmath>
-
 #include <libSphysl/motion.h>
 #include <libSphysl/utility.h>
 
-using namespace libSphysl::motion;
-using namespace libSphysl::utility;
-using namespace libSphysl;
-
-struct arg_t {
+struct arg_simple_t {
 	const double &delta_t;
+	const size_t start, stop;
 
-	double &x, &y, &z;
-	double &v_x, &v_y, &v_z;
-	double &a_x, &a_y, &a_z;
+	std::vector<double> &xs, &ys, &zs;
+	std::vector<double> &v_xs, &v_ys, &v_zs;
+	std::vector<double> &a_xs, &a_ys, &a_zs;
 
-	double &F_x, &F_y, &F_z;
-	const double &m;
+	std::vector<double> &F_xs, &F_ys, &F_zs;
+	const std::vector<double> &ms;
 };
 
-static void calculator(sandbox_t* s, void* arg) {
-	auto& data = *reinterpret_cast<arg_t*>(arg);
-	(void) s;
+static void calculator_simple(void* arg) {
+	auto& data = *reinterpret_cast<arg_simple_t*>(arg);
 
-	data.a_x = data.F_x / data.m;
-	data.a_y = data.F_y / data.m;
-	data.a_z = data.F_z / data.m;
+	for(size_t i = data.start; i < data.stop; i++) {
+		data.a_xs[i] = data.F_xs[i] / data.ms[i];
+		data.a_ys[i] = data.F_ys[i] / data.ms[i];
+		data.a_zs[i] = data.F_zs[i] / data.ms[i];
 
-	data.v_x += data.a_x * data.delta_t;
-	data.v_y += data.a_y * data.delta_t;
-	data.v_z += data.a_z * data.delta_t;
+		data.v_xs[i] += data.a_xs[i] * data.delta_t;
+		data.v_ys[i] += data.a_ys[i] * data.delta_t;
+		data.v_zs[i] += data.a_zs[i] * data.delta_t;
 
-	data.x += data.v_x * data.delta_t;
-	data.y += data.v_y * data.delta_t;
-	data.z += data.v_z * data.delta_t;
+		data.xs[i] += data.v_xs[i] * data.delta_t;
+		data.ys[i] += data.v_ys[i] * data.delta_t;
+		data.zs[i] += data.v_zs[i] * data.delta_t;
 
-	data.F_x = data.F_y = data.F_z = 0.0;
+		data.F_xs[i] = data.F_ys[i] = data.F_zs[i] = 0.0;
+	}
 }
 
-engine_t libSphysl::motion::classical(sandbox_t *s) {
-	engine_t engine;
+libSphysl::engine_t libSphysl::motion::classical(libSphysl::sandbox_t* s) {
+	libSphysl::engine_t engine;
 
-	engine.calculator = calculator;
-	engine.destructor = destructor<arg_t>;
-	engine.sandbox = s;
+	engine.calculator = calculator_simple;
+	engine.destructor = libSphysl::utility::destructor<arg_simple_t>;
 
 	const auto total = std::get<std::size_t>(
 		s -> config.at("entity count")
 	);
+
+	auto concurrency = s -> threads.size();
+
+	concurrency = total > concurrency? concurrency: total;
+
+	const auto per_thread = total / concurrency;
+	const auto first_threads = total % concurrency;
 	
 	auto& delta_t = s -> config["time change"];
-	delta_t = 1.0 / 1000000.0;
+	delta_t = libSphysl::default_time_change;
 
-	std::vector<data_t> zeros(total, 0.0);
-	std::vector<data_t> ones(total, 1.0);
+	std::vector<double> zeros(total, 0.0);
+	std::vector<double> ones(total, 1.0);
 
 	auto& xs = s -> database["x position"];
 	auto& ys = s -> database["y position"];
@@ -152,9 +154,8 @@ struct arg_depth_t {
 	const double &m;
 };
 
-static void calculator_depth(sandbox_t* s, void* arg) {
+static void calculator_depth(void* arg) {
 	auto& data = *reinterpret_cast<arg_depth_t*>(arg);
-	(void) s;
 
 	if(!data.initialised) {
 		data.v_xs[0].first = data.v_x;
@@ -244,7 +245,7 @@ static size_t factorial(const size_t n) {
 	return x;
 }
 
-engine_t libSphysl::motion::classical(sandbox_t *s, size_t depth) {
+engine_t libSphysl::motion::classical_predictive(sandbox_t *s, size_t depth) {
 	engine_t engine;
 
 	engine.calculator = calculator_depth;

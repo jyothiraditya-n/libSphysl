@@ -13,13 +13,25 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
+/* Including Library Headerfiles */
+
 #include <libSphysl.h>
+
+/* Avoiding Header Redefinitions */
 
 #ifndef LS_TIME_H
 #define LS_TIME_H 1
 namespace libSphysl::time {
 
+/* Function Declarations */
+
+/* These are engine generators for clocks; realtime synchronises changes in
+ * time in the simulation with changes in system time, constrained does the
+ * same but can be configured with min/max values for the time change, and
+ * constant updates the clock with a constant time change per cycle. */
+
 libSphysl::engine_t realtime(libSphysl::sandbox_t* s);
+libSphysl::engine_t constrained(libSphysl::sandbox_t* s);
 libSphysl::engine_t constant(libSphysl::sandbox_t* s);
 
 }

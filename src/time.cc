@@ -13,123 +13,181 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <cmath>
+/* Including Standard Libraries */
 
 #include <chrono>
+
+/* Including Library Headerfiles */
 
 #include <libSphysl/time.h>
 #include <libSphysl/utility.h>
 
-using namespace std::chrono;
+/* Structure Declarations */
 
-using namespace libSphysl::time;
-using namespace libSphysl::utility;
-using namespace libSphysl;
-
-struct arg_realtime_t {
-	high_resolution_clock::time_point last;
-	bool initialised;
-
+/* This is the argument that's gonig to be passed to the calculator. */
+struct arg_t {
+	/* The simulation data we are in charge of. */
 	double &t, &delta_t;
-	const double &min, &max;
+	size_t &tick;
 
-	std::size_t &tick;
+	/* We need to know how much time has elapsed since the last time the
+	 * clock was updated. */
+	std::chrono::high_resolution_clock::time_point last;
+	bool initialised; // To keep track of whether last has been set.
+
+	/* The constraints on the delta_t. */
+	const double &min, &max;
 };
 
-static void calculator_realtime(sandbox_t* s, void* arg) {
-	auto &data = *reinterpret_cast<arg_realtime_t*>(arg);
-	(void) s;
+/* Function definitions */
 
-	if(!data.initialised) {
-		data.last = high_resolution_clock::now();
-		data.initialised = true;
-		return;
+/* The engines do fairly similar things, so to avoid source code duplication we
+ * write only a single calculator. However, for performance, this is templated
+ * so the compiler can get rid of conditionals and duplicate code as needed. */
+
+template<bool constrained, bool constant> static void calculator(void* arg) {
+	/* Get a reference to our cached data by casting the argument. */
+	auto &data = *reinterpret_cast<arg_t*>(arg);
+
+	/* If the time change is not constant, get the change in clock time. */
+	if constexpr(!constant) {
+		/* If last hasn't been initialised, initialise it and mark that
+		 * we've done that. */
+		if(!data.initialised) {
+			data.last = std::chrono::high_resolution_clock::now();
+			data.initialised = true;
+		}
+
+		/* Get the current system time and compare that with the time
+		 * the clock was last updated. */
+		const auto now = std::chrono::high_resolution_clock::now();
+		const auto duration = std::chrono::duration<double>(
+			now - data.last
+		);
+
+		/* Compute the change in time and update the cached time. */
+		data.delta_t = duration.count();
+		data.last = now;
 	}
 
-	const auto now = high_resolution_clock::now();
-	const auto span = duration_cast<duration<double>>(now - data.last);
-	auto delta_t = span.count();
+	/* If the time change is constrained, make sure it is within limits. */
+	if constexpr(constrained) {
+		data.delta_t = data.delta_t > data.max? data.max: data.delta_t;
+		data.delta_t = data.delta_t < data.min? data.min: data.delta_t;
+	}
 
-	delta_t = delta_t > data.max? data.max: delta_t;
-	delta_t = delta_t < data.min? data.min: delta_t;
-	
-	data.delta_t = delta_t;
-
-	data.last = now;
+	/* Update the time and move forward a tick. */
 	data.t += data.delta_t;
 	data.tick++;
 }
 
-engine_t libSphysl::time::realtime(sandbox_t* s) {
-	engine_t engine;
+/* All of the engine generators need to get the core simulation data, so to
+ * avoid code reduplication, it should be its own helper function. */
 
-	engine.calculator = calculator_realtime;
-	engine.destructor = destructor<arg_realtime_t>;
-	engine.sandbox = s;
+struct data_t {
+	double &t, &delta_t;
+	size_t &tick;
+};
 
+static data_t get_data(libSphysl::sandbox_t* s) {
+	/* Get the variables we need from the config and then reset them to
+	 * their default values. This very simply guarantees the std::variant's
+	 * will be of the correct type. */
 	auto& t = s -> config["time"];
-	t = 0.0;
+	t = libSphysl::default_time;
 
 	auto& delta_t = s -> config["time change"];
-	delta_t = std::pow(10.0, -6.0);
-
-	auto& min = s -> config["minimum time change"];
-	min = std::pow(10.0, -7.0);
-
-	auto& max = s -> config["maximum time change"];
-	max = std::pow(10.0, -5.0);
+	delta_t = libSphysl::default_time_change;
 
 	auto& tick = s -> config["simulation tick"];
-	tick = std::size_t(0);
+	tick = libSphysl::default_simulation_tick;
 
-	auto arg = new arg_realtime_t{
-		{}, false,
+	/* Return the references to the correct data type of the variants. */
+	return {
 		std::get<double>(t),
 		std::get<double>(delta_t),
-		std::get<double>(min),
-		std::get<double>(max),
-		std::get<std::size_t>(tick)
+		std::get<size_t>(tick)
+	};
+}
+
+/* The engine generators' code is a bit repetitive, but there's nothing that
+ * can be done about that without getting into needlessly funky C preprocessor
+ * code. */
+
+libSphysl::engine_t libSphysl::time::realtime(libSphysl::sandbox_t* s) {
+	/* The engine we're generating. */
+	libSphysl::engine_t engine;
+
+	/* The compiler will generate the appropriate overloads from the
+	 * templates it's been provided. */
+	engine.calculator = calculator<false, false>;
+	engine.destructor = libSphysl::utility::destructor<arg_t>;
+
+	/* Get the core simulation data. */
+	auto [t, delta_t, tick] = get_data(s);
+
+	/* Create a new argument on the heap. */
+	auto arg = new arg_t{
+		t, delta_t, tick, // Core simulation data.
+		{}, false, // Set up the clock.
+		{}, {} // We don't have any constraints.
 	};
 
+	// Only one calculation in this engine; return the generated engine.
 	engine.args.push_back(reinterpret_cast<void*>(arg));
 	return engine;
 }
 
-struct arg_constant_t {
-	double &t, &delta_t;
-	std::size_t &tick;
-};
+libSphysl::engine_t libSphysl::time::constrained(libSphysl::sandbox_t* s) {
+	/* The engine we're generating. */
+	libSphysl::engine_t engine;
 
-static void calculator_constant(sandbox_t* s, void* arg) {
-	auto &data = *reinterpret_cast<arg_constant_t*>(arg);
-	(void) s;
+	/* The compiler will generate the appropriate overloads. */
+	engine.calculator = calculator<true, false>;
+	engine.destructor = libSphysl::utility::destructor<arg_t>;
 
-	data.t += data.delta_t;
-	data.tick++;
-}
+	/* Get the core simulation data. */
+	auto [t, delta_t, tick] = get_data(s);
 
-engine_t libSphysl::time::constant(sandbox_t* s) {
-	engine_t engine;
+	/* Get our constraints. */ 
+	auto& min = s -> config["minimum time change"];
+	min = libSphysl::default_minimum_time_change;
 
-	engine.calculator = calculator_constant;
-	engine.destructor = destructor<arg_constant_t>;
-	engine.sandbox = s;
+	auto& max = s -> config["maximum time change"];
+	max = libSphysl::default_maximum_time_change;
 
-	auto& t = s -> config["time"];
-	t = 0.0;
+	auto arg = new arg_t{
+		t, delta_t, tick, // Core simulation data.
+		{}, false, // Set up the clock.
 
-	auto& delta_t = s -> config["time change"];
-	delta_t = std::pow(10.0, -6.0);
-
-	auto& tick = s -> config["simulation tick"];
-	tick = std::size_t(0);
-
-	auto arg = new arg_constant_t{
-		std::get<double>(t),
-		std::get<double>(delta_t),
-		std::get<std::size_t>(tick)
+		std::get<double>(min), std::get<double>(max)
+		// Set up the constraints.
 	};
 
+	/* Finish generating the engine. */
+	engine.args.push_back(reinterpret_cast<void*>(arg));
+	return engine;
+}
+
+libSphysl::engine_t libSphysl::time::constant(libSphysl::sandbox_t* s) {
+	/* The engine we're generating. */
+	libSphysl::engine_t engine;
+
+	/* The compiler will generate the appropriate overloads. */
+	engine.calculator = calculator<false, true>;
+	engine.destructor = libSphysl::utility::destructor<arg_t>;
+
+	/* Get the core simulation data. */
+	auto [t, delta_t, tick] = get_data(s);
+
+	/* Create a new argument on the heap. */
+	auto arg = new arg_t{
+		t, delta_t, tick, // Core simulation data.
+		{}, false, // Set up the clock.
+		{}, {} // We don't have any constraints.
+	};
+
+	// Only one calculation in this engine; return the generated engine.
 	engine.args.push_back(reinterpret_cast<void*>(arg));
 	return engine;
 }

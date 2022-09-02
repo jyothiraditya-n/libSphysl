@@ -23,8 +23,22 @@
 #define LS_UTILITY_H 1
 namespace libSphysl::utility {
 
-template<typename T>
-void destructor(libSphysl::engine_t* e) {
+struct vector_t {
+	double x, y, z;
+
+	double length() const;
+	vector_t operator-() const; 
+
+	double dot(const vector_t& v) const;
+	vector_t cross(const vector_t& v) const;
+
+	vector_t operator+(const vector_t& v) const;
+	vector_t operator-(const vector_t& v) const;
+	vector_t operator*(const double d) const;
+	vector_t operator/(const double d) const;
+};
+
+template<typename T> void destructor(libSphysl::engine_t* e) {
 	for(auto& i: e -> args) {
 		delete reinterpret_cast<T*>(i);
 	}
@@ -33,7 +47,7 @@ void destructor(libSphysl::engine_t* e) {
 void null_calculator(void* arg);
 void null_destructor(libSphysl::engine_t* e);
 
-template<typename T> T random(T min, T max) {
+template<typename T> T random(const T min, const T max) {
 	std::random_device device;
 	std::mt19937 engine{device()};
 	std::uniform_int_distribution<T> distribution(min, max);
@@ -42,7 +56,7 @@ template<typename T> T random(T min, T max) {
 }
 
 template<typename T>
-void randomise(std::vector<libSphysl::data_t> &v, T min, T max) {
+void randomise(std::vector<T>& v, const T min, const T max) {
 	std::random_device device;
 	std::mt19937 engine{device()};
 	std::uniform_int_distribution<T> distribution(min, max);
@@ -52,21 +66,8 @@ void randomise(std::vector<libSphysl::data_t> &v, T min, T max) {
 	}
 }
 
-double random(double min, double max);
-void randomise(std::vector<libSphysl::data_t> &v, double min, double max);
-
-struct vector_t {
-	double x, y, z;
-
-	double length() const;
-	double dot(const vector_t& v) const;
-	vector_t cross(const vector_t& v) const;
-
-	vector_t operator+(const vector_t& v) const;
-	vector_t operator-(const vector_t& v) const;
-	vector_t operator*(const double d) const;
-	vector_t operator/(const double d) const;
-};
+double random(const double min, const double max);
+void randomise(std::vector<double>& v, const double min, const double max);
 
 }
 #endif

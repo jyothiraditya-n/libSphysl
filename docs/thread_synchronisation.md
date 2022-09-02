@@ -8,7 +8,7 @@ This would block the thread that calls the simulation's start function, so in ad
 
 The main components that are involved in the thread synchronisation are thus the simulation sandbox `sandbox_t` that starts and stops everything, the thread `thread_t`s that run computations and await instruction when they're finished, and the workset `workset_t`s that load their listings into the threads when run and wait until the threads are finished. This is all done using the two mutexes `start` and `stop` as well the boolean `finished` found in each helper thread's `thread_t` structure, as well as the a boolean `finished` found in the main thread's `sandbox_t` structure.
 
-The relevant functinos are `sandbox_t::start()`, `sandbox_t::stop()` and `workset_t::run()`, which respectively start all the threads, stop them all, and context switch the listings in the helper threads, as invoked for all worksets by the main thread. The helper threads run the `helper_kernel` function as definide privately in `src/libSphysl.cc` while the main thread runs the `main_kernel` function similarly defined in `src/libSphysl.cc`.
+The relevant functions are `sandbox_t::start()`, `sandbox_t::stop()` and `workset_t::run()`, which respectively start all the threads, stop them all, and context switch the listings in the helper threads, as invoked for all worksets by the main thread. The helper threads run the `helper_kernel` function as defined privately in `src/libSphysl.cc` while the main thread runs the `main_kernel` function similarly defined in `src/libSphysl.cc`.
 
 ## Starting the threads.
 
@@ -30,11 +30,11 @@ The helper threads, on the other hand, go ahead and check if they should exit af
 
 Within the libSphysl backend, the kernels that run on the various threads reference a boolean to check if they should terminate execution or continue going. If this variable is set, they will break out of their infinite loops, exiting normally. Namely, the main kernel refers to the `finished` variable in its respective `sandbox_t` while the helper kernels refer to `finished` in their respective `thread_t`s.
 
-In order to avoid deadlocks, the main kernel is terminated before the helper kernels. While the main kernel is a simple enough matter of setting the flag, for each of the helpker kernels, we need to also assign them a listing for a computation that involves doing nothing, and then unlock their `start` mutexes as the main kernel would have done. When they reach the end of their loop, they'll see the flag has been set and exit normally.
+In order to avoid deadlocks, the main kernel is terminated before the helper kernels. While the main kernel is a simple enough matter of setting the flag, for each of the helper kernels, we need to also assign them a listing for a computation that involves doing nothing, and then unlock their `start` mutexes as the main kernel would have done. When they reach the end of their loop, they'll see the flag has been set and exit normally.
 
 ## Illustration of everything in action
 
-The following is an approximate illustration of everything running on a dual-core CPU with one workset.
+The following is an approximate illustration of everything running on a dual-threaded workload with one workset. Naturally, exactly which instructions are being run in parallel depends on the way things were compiled, the CPU at hand, and many many other factors, but this might help shed light on the concept.
 
 Calling Thread | Main Thread | Helper Thread #1 | Helper Thread #2
 --- | --- | --- | ---
@@ -58,8 +58,8 @@ returns to caller | checks `finished` flag; doesn't exit | |
 &nbsp; | blocks on locking `start` mutex of thread 2 | unlocks `stop` mutex | unlocks `start` mutex
 &nbsp; | locks `start` mutex of thread 2 | checks `finished` flag; loops | executes listing
 calls `stop()` | locks `stop` mutex of thread 1 | blocks on locking `start` mutex | unlocks `stop` mutex
-sets `finished` flag of sandbox to `true` | locks `stop` mutex of thread 2 | | blocks on locking `start` mutex
-waits for main thread to join | checks `finished` flag; exits | |
+sets `finished` flag of sandbox to `true` | locks `stop` mutex of thread 2 | | checks `finished` flag; loops
+waits for main thread to join | checks `finished` flag; exits | | blocks on locking `start` mutex
 sets listing for thread 1 | | |
 sets `finished` flag for thread 1 to `true` | | |
 unlocks `start` mutex for thread 1 | | |

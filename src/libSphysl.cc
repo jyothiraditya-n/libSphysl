@@ -81,7 +81,7 @@ void libSphysl::workset_t::run() {
 	auto it = start;
 	for(auto& i: this -> listings) {
 		it -> listing = &i;
-		it -> mutex.unlock();
+		it -> start.unlock();
 
 		std::advance(it, 1);
 	}
@@ -135,7 +135,7 @@ libSphysl::sandbox_t::sandbox_t():
 	threads(std::thread::hardware_concurrency())
 {}
 
-libSphysl::sandbox_t::sandbox_t(std::size_t concurrency):
+libSphysl::sandbox_t::sandbox_t(size_t concurrency):
 	/* Initialise variables. */
 	threads(concurrency)
 {}
