@@ -22,7 +22,7 @@
 
 #include <libSphysl.h>
 #include <libSphysl/gravity.h>
-#include <libSphysl/logging.h>
+//#include <libSphysl/logging.h>
 #include <libSphysl/motion.h>
 #include <libSphysl/time.h>
 #include <libSphysl/utility.h>
@@ -74,7 +74,7 @@ void help_flag();
 void init_flags(int argc, char **argv);
 
 void on_interrupt(int signum);
-void renderer(sandbox_t* s, void* arg);
+void renderer(void* arg);
 
 int main(int argc, char **argv) {
 	name = argv[0];
@@ -83,15 +83,15 @@ int main(int argc, char **argv) {
 	sandbox.config["entity count"] = size_t{10};
 
 	sandbox.add_worksets(gravity::classical(&sandbox));
-	sandbox.add_worksets(motion::classical(&sandbox, calc_depth));
+	sandbox.add_worksets(motion::predictive(&sandbox, calc_depth));
 
-	auto& xs = sandbox.database.at("x position");
-	auto& ys = sandbox.database.at("y position");
+	auto& xs = get<vector<double>>(sandbox.database["x position"]);
+	auto& ys = get<vector<double>>(sandbox.database["y position"]);
 
-	auto& v_xs = sandbox.database.at("x velocity");
-	auto& v_ys = sandbox.database.at("y velocity");
+	auto& v_xs = get<vector<double>>(sandbox.database["x velocity"]);
+	auto& v_ys = get<vector<double>>(sandbox.database["y velocity"]);
 
-	auto& ms = sandbox.database.at("mass");
+	auto& ms = get<vector<double>>(sandbox.database["mass"]);
 	ms[0] = 2.0 * pow(10.0, 30.0);
 
 	auto theta = random(-M_PI, M_PI);
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
 	ms[9] = 1.3 * pow(10.0, 22.0);
 
 	sandbox.add_worksets(time::constant(&sandbox));
-	sandbox.config.at("time change") = step_time * 1.0;
+	sandbox.config["time change"] = step_time * 1.0;
 
 	signal(SIGINT, on_interrupt);
 
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(strlen(output) && strcmp(output, "-")) {
-		sandbox.add_worksets(logging::csv(
+		/*sandbox.add_worksets(logging::csv(
 			&sandbox, output, log_freq, 10,
 			{
 				"x position", "y position",
@@ -220,11 +220,11 @@ int main(int argc, char **argv) {
 				"x acceleration", "y acceleration",
 			},
 			{"time", "time change"}
-		));
+		));*/
 	}
 
 	sandbox.add_worksets(
-		engine_t{renderer, null_destructor, &sandbox, {NULL}}
+		engine_t{renderer, {NULL}, null_destructor}
 	);
 
 	sandbox.start();
@@ -324,43 +324,39 @@ void init_flags(int argc, char **argv) {
 	if(ret != LCA_OK) help(1);
 }
 
-void renderer(sandbox_t* s, void* arg) {
-	static auto& tick = get<size_t>(s -> config["simulation tick"]);
+void renderer(void* arg) {
+	static auto& tick = get<size_t>(sandbox.config["simulation tick"]);
 	if(tick % log_freq) return;
-	(void) arg;
-	(void) s;
 
-	static auto& xs = sandbox.database.at("x position");
-	static auto& ys = sandbox.database.at("y position");
+	(void) arg;
+
+	static auto& xs = get<vector<double>>(sandbox.database["x position"]);
+	static auto& ys = get<vector<double>>(sandbox.database["y position"]);
 
 	auto min_x = 0.0, max_x = 0.0;
 	auto min_y = 0.0, max_y = 0.0;
 
 	for(const auto& i: xs) {
-		const auto x = get<double>(i);
-		if(x < min_x) min_x = x;
-		if(x > max_x) max_x = x;
+		if(i < min_x) min_x = i;
+		else if(i > max_x) max_x = i;
 	}
 
 	for(const auto& i: ys) {
-		const auto y = get<double>(i);
-		if(y < min_y) min_y = y;
-		if(y > max_y) max_y = y;
+		if(i < min_y) min_y = i;
+		else if(i > max_y) max_y = i;
 	}
 
-	static auto& v_xs = sandbox.database.at("x velocity");
-	static auto& v_ys = sandbox.database.at("y velocity");
+	static auto& v_xs = get<vector<double>>(sandbox.database["x velocity"]);
+	static auto& v_ys = get<vector<double>>(sandbox.database["y velocity"]);
 
 	auto max_vx = 0.0, max_vy = 0.0;
 
 	for(const auto& i: v_xs) {
-		const auto v_x = abs(get<double>(i));
-		if(v_x > max_vx) max_vx = v_x;
+		if(i > max_vx) max_vx = i;
 	}
 
 	for(const auto& i: v_ys) {
-		const auto v_y = abs(get<double>(i));
-		if(v_y > max_vy) max_vy = v_y;
+		if(i > max_vy) max_vy = i;
 	}
 
 	LSCb_clear(&buffer);
@@ -374,40 +370,35 @@ void renderer(sandbox_t* s, void* arg) {
 	const auto delta = delta_x > delta_y? delta_x: delta_y;
 
 	auto ix = xs.begin();
-	auto ivx = v_xs.begin();
-	auto ivy = v_ys.begin();
+	auto iv_x = v_xs.begin();
+	auto iv_y = v_ys.begin();
 	auto ind = '0';
 
 	for(const auto& iy: ys) {
-		const auto x = get<double>(*ix);
-		const auto y = get<double>(iy);
-		const auto v_x = get<double>(*ivx);
-		const auto v_y = get<double>(*ivy);
-
 		const auto x_start = LSCb_getx(&buffer,
-				2.0 * (x - min_x) / delta - delta_x / delta
-				- v_x / max_vx
+				2.0 * (*ix - min_x) / delta - delta_x / delta
+				- *iv_x / max_vx
 			);
 
 		const auto y_start = LSCb_gety(&buffer,
-				2.0 * (y - min_y) / delta - delta_y / delta
-				- v_y / max_vy
+				2.0 * (iy - min_y) / delta - delta_y / delta
+				- *iv_y / max_vy
 			);
 
 		const auto x_end = LSCb_getx(&buffer,
-				2.0 * (x - min_x) / delta - delta_x / delta
+				2.0 * (*ix - min_x) / delta - delta_x / delta
 			);
 
 		const auto y_end = LSCb_gety(&buffer,
-				2.0 * (y - min_y) / delta - delta_y / delta
+				2.0 * (iy - min_y) / delta - delta_y / delta
 			);
 		
 		LSCl_drawz(&buffer, x_start, y_start, -0.1, x_end, y_end, -0.1);
 		LSCb_setzv(&buffer, x_end, y_end, 0.0, ind++);
 
 		advance(ix, 1);
-		advance(ivx, 1);
-		advance(ivy, 1);
+		advance(iv_x, 1);
+		advance(iv_y, 1);
 	}
 
 	LSCb_print(&buffer, 1);

@@ -76,7 +76,6 @@ struct engine_t {
 	std::list<void*> args{};
 
 	destructor_t destructor{};
-	~engine_t(); // We'll be defining a custom destructor.
 };
 
 /* Internally, the sandbox_t manages code execution by using threads and
@@ -105,7 +104,7 @@ struct workset_t {
 	std::vector<thread_t>& threads; // The threads are shared.
 	std::vector<listing_t> listings{};
 
-	workset_t(sandbox_t* s, const engine_t e);
+	workset_t(sandbox_t* s, const engine_t& e);
 
 	/* Helper function to initialise the threads and synchronise them. */
 	void run();
@@ -126,6 +125,8 @@ typedef std::variant<
 
 > data_t;
 
+typedef std::pair<data_t, data_t> data_pair_t;
+
 /* The choice of storing a variant of vectors of each type rather than a vector
  * of variants was done due to performance, since running std::get() on a
  * variant to acquire an lvalue of the data we want is slowed down by the type
@@ -136,7 +137,7 @@ typedef std::variant<
  * having to cache pointers to every single value. */
 
 typedef std::variant<
-	std::vector<bool>, std::vector<size_t>, std::vector<intmax_t>,
+	std::vector<bool>, std::vector<size_t>, std::vector<std::intmax_t>,
 	std::vector<double>, std::vector<std::complex<double>>,
 	std::vector<binary_t>
 
@@ -167,7 +168,51 @@ struct binary_t {
 typedef std::map<std::string, data_vector_t> database_t;
 typedef std::map<std::string, data_t> config_t;
 
-/* Combined Type Definitions */
+/* Constants Declarations */
+
+/* The following are stored into a sandbox_t when an engine generator needs to
+ * create a config or database entry it depends on. */
+
+inline config_t default_configs{
+	{"entity count", size_t{0}}, // units
+
+	{"time", 0.0}, // seconds
+	{"simulation tick", size_t{0}}, // units
+	{"time change", std::pow(10.0, -6.0)}, // seconds
+
+	{"minimum time change", std::pow(10.0, -7.0)}, // seconds
+	{"maximum time change", std::pow(10.0, -5.0)},
+
+	{"gravitational constant", 6.67430 * std::pow(10.0, -11.0)}
+	// Newton metre^2 / kilogramme^2
+};
+
+inline config_t default_entry_values{
+	{"x position", 0.0}, // metres
+	{"y position", 0.0},
+	{"z position", 0.0},
+
+	{"x velocity", 0.0}, // metres/second
+	{"y velocity", 0.0},
+	{"z velocity", 0.0},
+
+	{"x acceleration", 0.0}, // metres/second^2
+	{"y acceleration", 0.0},
+	{"z acceleration", 0.0},
+
+	{"x force", 0.0}, // netwons
+	{"y force", 0.0},
+	{"z force", 0.0},
+
+	{"mass", 1.0} // kilogrammes
+};
+
+/* The following defines the ranges for randomly generating data for variables
+ * in a sandbox_t's database. */
+
+inline std::map<std::string, data_pair_t> default_entry_ranges{};
+
+/* Main Type Definition */
 
 /* Putting it all together, we have the sandbox_t itself, storing data and code
  * components as discussed earlier */
@@ -189,8 +234,8 @@ struct sandbox_t {
 	 * say, whether it's going to have everything run concurrently or have
 	 * a number of sets of concurrent calculations.) */
 
-	void add_worksets(const engine_t e);
-	void add_worksets(const std::list<engine_t> e);
+	void add_worksets(const engine_t& e);
+	void add_worksets(const std::list<engine_t>& e);
 
 	/* We're gonna have custom constructors, one without arguments, for
 	 * using all available threads in the system, and another for only
@@ -199,88 +244,21 @@ struct sandbox_t {
 	sandbox_t();
 	sandbox_t(size_t concurrency);
 
+	~sandbox_t(); // We need a custom destructor to clean up the engines.
+
 	std::thread main_thread{};
 	bool finished = false; // Used for signalling.
 
 	void start(); // Used for starting and stopping the simulation.
 	void stop();
+
+	/* These functions finds entries in a sandbox_t and return them, but if
+ 	 * they don't exist, they generate them using the default values
+ 	 * specified above. */
+
+	data_t& config_get(const std::string& id);
+	data_vector_t& database_get(const std::string& id);
 };
-
-/* Constants Declarations */
-
-/* The following are stored into a sandbox_t's config when an engine generator
- * needs to create a variable it depends on. */
-
-config_t default_configs{
-	{"entity count", size_t{0}}, // units
-
-	{"time", 0.0}, // seconds
-	{"tick", size_t{0}}, // units
-
-	{"time change", std::pow(10.0, -6.0)}, // seconds
-	{"minimum time change", std::pow(10.0, -7.0)},
-	{"maximum time change", std::pow(10.0, -5.0)}
-};
-
-/* The following define the ranges for randomly generating data for variables
- * in a sandbox_t's database, when an engine generator needs to create any
- * variable as an engine dependency. */
-
-config_t default_database_values{};
-
-config_t default_database_minimums{
-	{"x position", 0.0}, // metres
-	{"y position", 0.0},
-	{"z position", 0.0},
-
-	{"x velocity", 0.0}, // metres/second
-	{"y velocity", 0.0},
-	{"z velocity", 0.0},
-
-	{"x acceleration", 0.0}, // metres/second^2
-	{"y acceleration", 0.0},
-	{"z acceleration", 0.0},
-
-	{"x force", 0.0}, // netwons
-	{"y force", 0.0},
-	{"z force", 0.0},
-
-	{"mass", 1.0} // kilogrammes
-};
-
-config_t default_database_maximums{
-	{"x position", 0.0}, // metres
-	{"y position", 0.0},
-	{"z position", 0.0},
-
-	{"x velocity", 0.0}, // metres/second
-	{"y velocity", 0.0},
-	{"z velocity", 0.0},
-
-	{"x acceleration", 0.0}, // metres/second^2
-	{"y acceleration", 0.0},
-	{"z acceleration", 0.0},
-
-	{"x force", 0.0}, // netwons
-	{"y force", 0.0},
-	{"z force", 0.0},
-
-	{"mass", 1.0} // kilogrammes
-};
-
-/* Function Declarations */
-
-/* This function finds the config entry in a sandbox_t and returns it, but if
- * it doesn't exist, it generates it with the default value as specified
- * above. */
-
-data_t& get_config_entry(sandbox_t* s, const std::string id);
-
-/* This function finds the database entry in a sandbox_t and returns it, but if
- * it doesn't exist, it generates it with random data according to the above
- * defaults. The understanding is this will be used by engine generators. */
-
-data_vector_t& get_database_entry(sandbox_t* s, const std::string id);
 
 }
 #endif

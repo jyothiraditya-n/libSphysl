@@ -168,42 +168,39 @@ libSphysl::engine_t generator(libSphysl::sandbox_t *s, size_t depth) {
 
 	engine.destructor = libSphysl::utility::destructor<arg_t>;
 
-	const auto& total = std::get<size_t>(
-		libSphysl::get_config_entry(s, "entity count")
-	);
+	const auto concurrency = s -> threads.size();
+	const auto total = std::get<size_t>(s -> config_get("entity count"));
 
-	auto concurrency = s -> threads.size();
-	concurrency = total > concurrency? concurrency: total;
-
-	const auto per_thread = total / concurrency;
-	const auto first_threads = total % concurrency;
+	const auto threads = total > concurrency? concurrency: total;
+	const auto per_thread = total / threads;
+	const auto first_threads = total % threads;
 	
-	const auto& delta_t = libSphysl::get_config_entry(s, "time change");
+	const auto& delta_t = s -> config_get("time change");
 
-	auto& xs = libSphysl::get_database_entry(s, "x position");
-	auto& ys = libSphysl::get_database_entry(s, "y position");
-	auto& zs = libSphysl::get_database_entry(s, "z position");
+	auto& xs = s -> database_get("x position");
+	auto& ys = s -> database_get("y position");
+	auto& zs = s -> database_get("z position");
 
-	auto& v_xs = libSphysl::get_database_entry(s, "x velocity");
-	auto& v_ys = libSphysl::get_database_entry(s, "y velocity");
-	auto& v_zs = libSphysl::get_database_entry(s, "z velocity");
+	auto& v_xs = s -> database_get("x velocity");
+	auto& v_ys = s -> database_get("y velocity");
+	auto& v_zs = s -> database_get("z velocity");
 
-	auto& a_xs = libSphysl::get_database_entry(s, "x acceleration");
-	auto& a_ys = libSphysl::get_database_entry(s, "y acceleration");
-	auto& a_zs = libSphysl::get_database_entry(s, "z acceleration");
+	auto& a_xs = s -> database_get("x acceleration");
+	auto& a_ys = s -> database_get("y acceleration");
+	auto& a_zs = s -> database_get("z acceleration");
 
-	auto& F_xs = libSphysl::get_database_entry(s, "x force");
-	auto& F_ys = libSphysl::get_database_entry(s, "y force");
-	auto& F_zs = libSphysl::get_database_entry(s, "z force");
+	auto& F_xs = s -> database_get("x force");
+	auto& F_ys = s -> database_get("y force");
+	auto& F_zs = s -> database_get("z force");
 
-	const auto& ms = libSphysl::get_database_entry(s, "mass");
+	const auto& ms = s -> database_get("mass");
 
 	auto initialiser = [&]() {
 		if constexpr(!predictive) return [&](
 			size_t start, size_t stop, size_t length
 		){
 			(void) length;
-		
+
 			return new arg_t{
 				std::get<double>(delta_t),
 				start, stop,
@@ -233,7 +230,6 @@ libSphysl::engine_t generator(libSphysl::sandbox_t *s, size_t depth) {
 		else return [&](size_t start, size_t stop, size_t length) {
 			static std::vector<
 				std::vector<std::pair<double, double>>
-
 			> pairs(length, {depth, {0.0, 0.0}});
 
 			static std::vector<double> coeffs(depth);

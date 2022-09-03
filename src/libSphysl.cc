@@ -15,37 +15,34 @@
 
 /* Including Library Headerfiles */
 
+#include <iostream>
+
 #include <libSphysl.h>
 #include <libSphysl/utility.h>
 
 /* Function Definitions */
 
-libSphysl::engine_t::~engine_t() {
-	/* Call the user-defined destructor. */
-	this -> destructor(this);
-}
-
 libSphysl::workset_t::workset_t(
 	libSphysl::sandbox_t* s,
-	const libSphysl::engine_t e
+	const libSphysl::engine_t& e
 ):
 	/* Initialise variables. */
 	threads(s -> threads)
 {
 	/* Calculate the number of calculations per thread. */
+	const auto concurrency = this -> threads.size();
 	const auto total = e.args.size();
-	auto concurrency = this -> threads.size();
 
-	concurrency = total > concurrency? concurrency: total;
+	const auto num_threads = total > concurrency? concurrency: total;
 	// Can't use more threads than there are calculations.
 
-	const auto per_thread = total / concurrency;
-	const auto first_threads = total % concurrency;
-	// When the total doesn't evenly divide into the concurrency, the first
-	// few threads will each have one more calculation than the rest.
+	const auto per_thread = total / num_threads;
+	const auto first_threads = total % num_threads;
+	// When the total doesn't evenly divide into the threads, the first few
+	// threads will each have one more calculation than the rest.
 
 	/* Create the listings. */
-	this -> listings = std::vector<listing_t>(concurrency);
+	this -> listings = std::vector<listing_t>(num_threads);
 
 	libSphysl::listing_t listing;
 	listing.first = e.calculator;
@@ -54,7 +51,7 @@ libSphysl::workset_t::workset_t(
 	 * threads. The first threads will get one more element each. */
 	auto it = e.args.begin();
 
-	for(size_t i = 0; i < concurrency; i++) {
+	for(size_t i = 0; i < num_threads; i++) {
 		const auto limit = i < first_threads?
 			per_thread + 1 : per_thread;
 
@@ -114,7 +111,7 @@ void libSphysl::workset_t::run() {
 	}
 }
 
-void libSphysl::sandbox_t::add_worksets(const engine_t e) {
+void libSphysl::sandbox_t::add_worksets(const engine_t& e) {
 	/* Save the engine so the args will be deleted when we're done. */
 	this -> engines.push_back(e);
 
@@ -123,7 +120,7 @@ void libSphysl::sandbox_t::add_worksets(const engine_t e) {
 	this -> worksets.push_back(workset);
 }
 
-void libSphysl::sandbox_t::add_worksets(const std::list<engine_t> e) {
+void libSphysl::sandbox_t::add_worksets(const std::list<engine_t>& e) {
 	/* Add every engine individually. */
 	for(const auto& i: e) {
 		this -> add_worksets(i);
@@ -139,6 +136,13 @@ libSphysl::sandbox_t::sandbox_t(size_t concurrency):
 	/* Initialise variables. */
 	threads(concurrency)
 {}
+
+libSphysl::sandbox_t::~sandbox_t() {
+	/* Call the user-defined destructor for each engine. */
+	for(auto& i: this -> engines) {
+		i.destructor(&i);
+	}
+}
 
 /* This is the kernel that is run by the calculation threads that's involved in
  * coordinating with the code in workset_t::run() to synchronise everything. */
@@ -237,66 +241,29 @@ void libSphysl::sandbox_t::stop() {
 	}
 }
 
-/* This helper function initialises a data_t with a value if the value has the
- * type we provide in the template instantiation. On success it returns true,
- * else it returns false. */
-
-template<typename T>
-static bool initialise_data(
-	libSphysl::data_t& data,
-	const libSphysl::data_t val
-){
-	/* If the type matches, set the value and return true, else false. */
-	if(std::holds_alternative<T>(val)) {
-		data = std::get<T>(val);
-		return true;
-	}
-
-	else return false;
-}
-
 libSphysl::data_t&
-libSphysl::get_config_entry(libSphysl::sandbox_t* s, const std::string id) {
+libSphysl::sandbox_t::config_get(const std::string& id) {
+	/* If the variable exists in the config, return it. */
+	try {return this -> config.at(id);}
+	catch(const std::out_of_range &e) {(void) e;}
 
-	/* Get the current data in the config and the default value for this
-	 * id. Although operator[] will insert in a map, it'll be a default-
-	 * initialised variant which won't have any type, so it's benign. */
-	const auto val = libSphysl::default_configs[id];
-	auto& data = s -> config[id];
-
-	/* Try to set the value for every type we support, if nothing matches
-	 * the type of the default value, assume there was no default value and
-	 * return an uninitialised data_t. */
-	if(initialise_data<bool>(data, val)) return data;
-	if(initialise_data<size_t>(data, val)) return data;
-	if(initialise_data<std::intmax_t>(data, val)) return data;
-	if(initialise_data<double>(data, val)) return data;
-	if(initialise_data<std::complex<double>>(data, val)) return data;
-
-	return data;
+	/* Insert the default value into the map and return the value. Note
+	 * though that this will throw if the id is not in the defaults
+	 * config. */
+	return this -> config[id] = libSphysl::default_configs.at(id);
 }
 
-/* This helper function initialises a vector of data_t's with a value if the
- * value has the type we provide in the template instantiation. On success it
+/* Thess helper function initialise a vector of data_t's with given values if
+ * they have the type we provide in the template instantiation. On success it
  * returns true, else it returns false. */
 
-/* If the vector was already initialised with data of this type, we don't do
- * anything and return true. This prevents resetting vectors multiple times
- * between engine generations, which could become rather expensive. */
-
 template<typename T>
-static bool initialise_vector(
+static bool init(
 	libSphysl::data_vector_t& vec, const size_t total,
-	const libSphysl::data_t val
+	const libSphysl::data_t& val
 ){
-	/* Don't do anything if the data is initialised; return true. */
-	if(std::holds_alternative<std::vector<T>>(vec)) {
-		if(std::get<std::vector<T>>(vec).size() == total) {
-			return true;
-		}
-	}
-
-	/* If the type matches, set the value and return true, else false. */
+	/* If the type matches for the value, set the values and return true
+	 * else return false. */
 	if(std::holds_alternative<T>(val)) {
 		vec = std::vector<T>(total, std::get<T>(val));
 		return true;
@@ -305,25 +272,12 @@ static bool initialise_vector(
 	return false;
 }
 
-/* This helper function initialises a vector of data_t's with given values if
- * they have the type we provide in the template instantiation. On success it
- * returns true, else it returns false. */
-
-/* Same as before, don't do anything if the vector's already initialised. */
-
 template<typename T>
-static bool initialise_vector(
+static bool init(
 	libSphysl::data_vector_t& vec, const size_t total,
-	const libSphysl::data_t min, const libSphysl::data_t max,
-	const libSphysl::data_t val
+	const libSphysl::data_t& min, const libSphysl::data_t& max,
+	const libSphysl::data_t& val
 ){
-	/* Don't do anything if the data is initialised; return true. */
-	if(std::holds_alternative<std::vector<T>>(vec)) {
-		if(std::get<std::vector<T>>(vec).size() == total) {
-			return true;
-		}
-	}
-
 	/* If the type matches for the value, set the values and return true. */
 	if(std::holds_alternative<T>(val)) {
 		vec = std::vector<T>(total, std::get<T>(val));
@@ -331,15 +285,15 @@ static bool initialise_vector(
 	}
 
 	/* If the type matches for the range, randomise the values accordingly
-	 * and return true. */
+	 * and return true, else return false. */
 	if(std::holds_alternative<T>(min)) {
-		auto values = std::vector<T>(total);
+		vec = std::vector<T>(total); // Initialise the vector
 
 		libSphysl::utility::randomise(
-			values, std::get<T>(min), std::get<T>(max)
-		);
+			std::get<std::vector<T>>(vec),
+			std::get<T>(min), std::get<T>(max)
+		); // Randomise the values.
 
-		vec = values;
 		return true;
 	}
 
@@ -347,41 +301,45 @@ static bool initialise_vector(
 }
 
 libSphysl::data_vector_t&
-libSphysl::get_database_entry(libSphysl::sandbox_t* s, const std::string id) {
-	const auto total = std::get<std::size_t>(
-		s -> config.at("entity count")
-	);
+libSphysl::sandbox_t::database_get(const std::string& id) {
+	const auto total = std::get<size_t>(this -> config_get("entity count"));
 
-	/* Get the current data in the database and the defaults for this id
-	 * Although operator[] will insert in a map, it'll be a default-
-	 * initialised variant which won't have any type, so it's benign. */
-	const auto val = libSphysl::default_database_values[id];
-	const auto min = libSphysl::default_database_minimums[id];
-	const auto max = libSphysl::default_database_maximums[id];
-	auto& vec = s -> database[id];
+	/* If the entry exists in the database, return it. */
+	try {return this -> database.at(id);}
+	catch(const std::out_of_range &e) {(void) e;}
+
+	/* We'll try getting the defaults config data, but the maps may throw
+	 * if the defaults are not configured. */
+
+	/* By setting the default values to binary_t's, if the defaults aren't
+	 * configured and they don't get updated, we'll hit the end of the
+	 * function and know to throw an error. */
+	data_t value = libSphysl::binary_t{};
+	data_pair_t range = std::pair<
+		libSphysl::binary_t, libSphysl::binary_t
+	>{};
+
+	try {value = libSphysl::default_entry_values.at(id);}
+	catch(const std::out_of_range &e) {(void) e;}
+
+	try {range = libSphysl::default_entry_ranges.at(id);}
+	catch(const std::out_of_range &e) {(void) e;}
+
+	/* Get the start and end of the ranges. */
+	const auto& min = range.first, max = range.second, val = value;
+
+	/* Insert an unitialised variant of vectors into the database and grab
+	 * a reference to it. */
+	auto& vec = this -> database[id];
 
 	/* Try to set the values for every type we support, if nothing matches
 	 * the type of the default value, assume there were no default values
 	 * and return with a default-initialised vector of doubles. */
-	if(initialise_vector<bool>(vec, total, val)) {
-		return vec;
-	}
+	if(init                 <bool> (vec, total,           val)) return vec;
+	if(init               <size_t> (vec, total, min, max, val)) return vec;
+	if(init        <std::intmax_t> (vec, total, min, max, val)) return vec;
+	if(init               <double> (vec, total, min, max, val)) return vec;
+	if(init <std::complex<double>> (vec, total,           val)) return vec;
 
-	else if(initialise_vector<size_t>(vec, total, min, max, val)) {
-		return vec;
-	}
-
-	else if(initialise_vector<std::intmax_t>(vec, total, min, max, val)) {
-		return vec;
-	}
-
-	else if(initialise_vector<double>(vec, total, min, max, val)) {
-		return vec;
-	}
-
-	if(initialise_vector<std::complex<double>>(vec, total, val)) {
-		return vec;
-	}
-
-	else return vec = std::vector<double>(total);
+	return vec = std::vector<double>(total);
 }
