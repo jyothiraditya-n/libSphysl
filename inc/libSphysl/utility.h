@@ -56,6 +56,70 @@ struct vector_t {
 	vector_t operator/(const double d) const;
 };
 
+template<typename T> struct slice_t {
+	std::vector<T>& vector;
+	T* start, stop;
+	T* data;
+
+	slice_t(){};
+
+	slice_t(const slice_t& slice):
+		vector{slice.vector}, start{slice.start}, stop{slice.stop},
+		data{slice.data}
+	{}
+
+	slice_t(std::vector<T>& vector):
+		vector{vector}, start{&vector[0]}, data{&vector[0]},
+		stop{&vector[vector.size() - 1]}
+	{}
+
+	slice_t(std::vector<T>& vector, size_t start, size_t stop):
+		vector{vector}, start{&vector[start]}, data{&vector[start]},
+		stop{&vector[stop]}
+	{}
+
+	slice_t& operator++() {this -> data++; return *this;}
+	slice_t& operator--() {this -> data--; return *this;}
+
+	slice_t operator++(int) {
+		slice_t slice(*this);
+		this -> data++;
+		return slice;
+	}
+
+	slice_t operator--(int) {
+		slice_t slice(*this);
+		this -> data--;
+		return slice;
+	}
+
+	void goto_begin() {this -> data = this -> start;}
+	void goto_end  () {this -> data = this -> stop; }
+
+	T* begin() const {return this -> start;}
+	T* end  () const {return this -> stop; }
+
+	T& operator()() const {return *(this -> T);}
+	T  operator- () const {return -*this;      }
+
+	T operator+(const T& t) const {return this -> data + t;}
+	T operator-(const T& t) const {return this -> data - t;}
+	T operator*(const T& t) const {return this -> data * t;}
+	T operator/(const T& t) const {return this -> data * t;}
+
+	T& operator= (const T& t) {return this -> data = t;}
+	T& operator+=(const T& t) {return this -> data += t;}
+	T& operator-=(const T& t) {return this -> data -= t;}
+	T& operator*=(const T& t) {return this -> data *= t;}
+	T& operator/=(const T& t) {return this -> data /= t;}
+
+	bool operator< (const T& t) const {return this -> data <  t;}
+	bool operator> (const T& t) const {return this -> data >  t;}
+	bool operator==(const T& t) const {return this -> data == t;}
+	bool operator<=(const T& t) const {return this -> data <= t;}
+	bool operator>=(const T& t) const {return this -> data >= t;}
+};
+
 /* Function Declarations */
 
 /* Simple templated function to de-allocate heap-allocated arguments given
@@ -89,7 +153,6 @@ template<typename T> T random(const T min, const T max) {
 
 /* Overload for doubles, since getting a random double uses a different
  * distribution generator from the integers. */
-
 double random(const double min, const double max);
 
 /* Same as random() but fill a vector with the random values. */
@@ -108,7 +171,7 @@ void randomise(std::vector<T>& v, const T min, const T max) {
 }
 
 /* Overload for doubles for the same reason. */
-
 void randomise(std::vector<double>& v, const double min, const double max);
+
 }
 #endif
