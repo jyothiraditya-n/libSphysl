@@ -19,28 +19,28 @@
 
 /* Function Definitions */
 
-double libSphysl::utility::vector_t::length() const {
+double libSphysl::utility::vector_t::length() const{
 	/* Pythagoras theorem. */
 	return std::sqrt(x * x + y * y + z * z);
 }
 
-double libSphysl::utility::vector_t::lengthsq() const {
+double libSphysl::utility::vector_t::lengthsq() const{
 	/* Pythagoras theorem. */
 	return x * x + y * y + z * z;
 }
 
-libSphysl::utility::vector_t libSphysl::utility::vector_t::operator-() const {
+libSphysl::utility::vector_t libSphysl::utility::vector_t::operator-() const{
 	/* Return a vector of our values negated. */
 	return {-x, -y, -z};
 }
 
-double libSphysl::utility::vector_t::dot(const vector_t& v) const {
+double libSphysl::utility::vector_t::dot(const vector_t& v) const{
 	/* Multiply each of the components and return the sum. */
 	return x * v.x + y * v.y + z * v.z;
 }
 
 libSphysl::utility::vector_t
-libSphysl::utility::vector_t::cross(const vector_t& v) const {
+libSphysl::utility::vector_t::cross(const vector_t& v) const{
 	/* Let's say the following are your vectors a and b:
 	 * a = <a1, a2, a3>, b = <b1, b2, b3>
 	 *
@@ -60,25 +60,25 @@ libSphysl::utility::vector_t::cross(const vector_t& v) const {
 }
 
 libSphysl::utility::vector_t
-libSphysl::utility::vector_t::operator+(const vector_t& v) const {
+libSphysl::utility::vector_t::operator+(const vector_t& v) const{
 	// Add the components and return a vector of the results.
 	return {x + v.x, y + v.y, z + v.z};
 }
 
 libSphysl::utility::vector_t
-libSphysl::utility::vector_t::operator-(const vector_t& v) const {
+libSphysl::utility::vector_t::operator-(const vector_t& v) const{
 	// Subtract the components and return a vector of the results.
 	return {x - v.x, y - v.y, z - v.z};
 }
 
 libSphysl::utility::vector_t
-libSphysl::utility::vector_t::operator*(const double d) const {
+libSphysl::utility::vector_t::operator*(const double d) const{
 	// Scale the components and return the results.
 	return {x * d, y * d, z * d};
 }
 
 libSphysl::utility::vector_t
-libSphysl::utility::vector_t::operator/(const double d) const {
+libSphysl::utility::vector_t::operator/(const double d) const{
 	// Scale and return the results.
 	return {x / d, y / d, z / d};
 }
