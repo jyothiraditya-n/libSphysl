@@ -17,7 +17,8 @@
 #include <libSphysl/utility.h>
 
 struct arg_t {
-	const size_t start, stop, skip;
+	const size_t start_1, stop_1;
+	const size_t start_2, stop_2;
 	const double &G;
 
 	const std::vector<double> &xs, &ys, &zs;
@@ -26,40 +27,51 @@ struct arg_t {
 	std::vector<double> &F_xs, &F_ys, &F_zs;
 };
 
-static void calculator(void* arg) {
+template<bool overlap, bool groups> static void calculator(void* arg) {
 	auto& data = *reinterpret_cast<arg_t*>(arg);
 
-	auto i = data.start;
-	auto j = data.start + data.skip;
-
-loop:	if(i >= data.stop) return;
-	
-	for(size_t k = 0; k < data.skip; k++) {
+	auto run_calculation = [&](size_t i, size_t j) {
 		const auto r = libSphysl::utility::vector_t{
-				data.xs[j + k], data.ys[j + k], data.zs[j + k]
+				data.xs[j], data.ys[j], data.zs[j]
 			} - libSphysl::utility::vector_t{
-				data.xs[i + k], data.ys[i + k], data.zs[i + k]
+				data.xs[i], data.ys[i], data.zs[i]
 			};
 
-		const auto F = (r * data.G * data.ms[i + k] * data.ms[j + k])
+		const auto F = (r * data.G * data.ms[i] * data.ms[j])
 			/ std::pow(r.length(), 3.0);
 
-		data.F_xs[i + k] += F.x; data.F_xs[j + k] -= F.x;
-		data.F_ys[i + k] += F.y; data.F_ys[j + k] -= F.y;
-		data.F_zs[i + k] += F.z; data.F_zs[j + k] -= F.z;
+		data.F_xs[i] += F.x; data.F_xs[j] -= F.x;
+		data.F_ys[i] += F.y; data.F_ys[j] -= F.y;
+		data.F_zs[i] += F.z; data.F_zs[j] -= F.z;
+	};
+
+
+	if constexpr(!groups) {
+		run_calculation(data.start_1, data.start_2);
+		return;
 	}
 
-	i += data.skip + 1;
-	j += data.skip + 1;
+	for(size_t i = data.start_1; i < data.stop_1; i++) {
+		if constexpr(overlap) {
+			for(size_t j = data.start_1; j < data.stop_1; j++) {
+				if(i == j) continue;
+				else run_calculation(i, j);
+			}
+		}
 
-	goto loop;
+		else {
+			for(size_t j = data.start_2; j < data.stop_2; j++) {
+				run_calculation(i, j);
+			}
+		}
+	}
 }
 
-std::list<libSphysl::engine_t> libSphysl::gravity::classical(libSphysl::sandbox_t* s) {
+std::list<libSphysl::engine_t>
+libSphysl::gravity::classical(libSphysl::sandbox_t* s) {
 	std::list<libSphysl::engine_t> engines;
 	libSphysl::engine_t engine;
 
-	engine.calculator = calculator;
 	engine.destructor = libSphysl::utility::destructor<arg_t>;
 
 	const auto concurrency = s -> threads.size();
@@ -77,9 +89,11 @@ std::list<libSphysl::engine_t> libSphysl::gravity::classical(libSphysl::sandbox_
 
 	const auto& ms = s -> database_get("mass");
 
-	auto initialiser = [&](size_t start, size_t stop, size_t skip) {
+	auto new_arg = [&](
+		size_t start_1, size_t stop_1, size_t start_2, size_t stop_2
+	){
 		return new arg_t{
-			start, stop, skip,
+			start_1, stop_1, start_2, stop_2,
 			std::get<double>(G),
 
 			std::get<std::vector<double>>(xs),
@@ -94,42 +108,99 @@ std::list<libSphysl::engine_t> libSphysl::gravity::classical(libSphysl::sandbox_
 		};
 	};
 
-	for(size_t skip = 1; skip < total - 1; skip++) {
-		const auto other = total % (skip * 2);
-		const auto units = total / (skip * 2)
-			+ other? size_t{1}: size_t{0};
+	const auto groups = total > (concurrency * 2)?
+		(concurrency * 2) : total;
 
-		const auto threads = units > concurrency? concurrency: units;
+	const auto per_group = total / groups;
+	const auto first_groups = total % groups;
 
-		const auto per_thread = units / threads;
-		const auto first_threads = units % threads;
+	std::vector<size_t> starts(groups);
+	std::vector<size_t> stops(groups);
 
-		engine.args.clear();
+	size_t start = 0;
+	for(size_t i = 0; i < groups; i++) {
+		const auto stop = i < first_groups?
+			start + per_group + 1: start + per_group;
 
-		size_t start = 0;
-		for(size_t i = 0; i < concurrency; i++) {
-			const auto stop = i < first_threads?
-				start + per_thread + 1 : start + per_thread;
+		starts[i] = start;
+		stops[i] = stop;
 
-			const auto arg = (i + 1 < concurrency)?
-				initialiser(
-					start * (skip * 2),
-					stop * (skip * 2),
-					skip
-				):
-				initialiser(
-					start * (skip * 2),
-					total - skip,
-					skip
-				);
+		start = stop;
+	}
 
-			engine.args.push_back(reinterpret_cast<void*>(arg));
-			start = stop;
-		}
+	if(groups / 2 < concurrency) goto next;
+	else engine.calculator = calculator<true, true>;
+	
+	for(size_t i = 0; i < groups; i++) {
+		auto arg = new_arg(starts[i], stops[i], {}, {});
+		engine.args.push_back(reinterpret_cast<void*>(arg));
+	}
+
+	engines.push_back(engine);
+	engine.args.clear();
+
+next:	std::vector<bool> used(groups, false);
+	std::vector<std::vector<bool>> done(groups, used);
+
+	engine.calculator = groups / 2 < concurrency?
+		calculator<false, false> : calculator<false, true>;
+
+	auto configure_engine = [&](size_t i, size_t j) {
+		if(!used[i] && !used[j]) {
+			used[i] = used[j] = true;
+			return;
+		};
+
+		done[i][j] = done[j][i] = true;
 
 		if(engine.args.size()) {
 			engines.push_back(engine);
+			engine.args.clear();
 		}
+
+		for(size_t k = 0; k < groups; k++) {
+			used[k] = false;
+		}
+
+		used[i] = used[j] = true;
+	};
+
+	for(size_t skip = 1; skip <= groups / 2; skip++) {
+		for(size_t offset1 = 0; offset1 <= skip; offset1++) {
+			const auto offset2 = (offset1 + skip >= groups)?
+				offset1 + skip - groups : offset1 + skip;
+
+			auto begun = false;
+			for(auto i = offset1, j = offset2;
+
+				(i != offset1 && i != offset2
+				&& j != offset1 && j != offset2) || !begun;
+
+				i = (i + skip + 1 >= groups)?
+					i + skip + 1 - groups : i + skip + 1,
+
+				j = (j + skip + 1 >= groups)?
+					j + skip + 1 - groups : j + skip + 1
+			){
+				begun = true;
+				if(done[i][j]) continue;
+				
+				configure_engine(i, j);
+				auto arg = new_arg(
+					starts[i], stops[i],
+					starts[j], stops[j]
+				);
+				
+				engine.args.push_back(
+					reinterpret_cast<void*>(arg)
+				);
+			}
+		}
+	}
+
+	if(engine.args.size()) {
+		engines.push_back(engine);
+		engine.args.clear();
 	}
 
 	return engines;

@@ -270,7 +270,7 @@ libSphysl::engine_t generator(libSphysl::sandbox_t *s, size_t depth) {
 	}();
 
 	size_t start = 0;
-	for(size_t i = 0; i < concurrency; i++) {
+	for(size_t i = 0; i < threads; i++) {
 		const auto stop = i < first_threads?
 			start + per_thread + 1 : start + per_thread;
 

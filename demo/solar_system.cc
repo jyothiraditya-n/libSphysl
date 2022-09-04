@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
 	sandbox.config["entity count"] = size_t{10};
 
 	sandbox.add_worksets(gravity::classical(&sandbox));
-	sandbox.add_worksets(motion::predictive(&sandbox, calc_depth));
+	sandbox.add_worksets(motion::simple(&sandbox));
 
 	auto& xs = get<vector<double>>(sandbox.database["x position"]);
 	auto& ys = get<vector<double>>(sandbox.database["y position"]);
