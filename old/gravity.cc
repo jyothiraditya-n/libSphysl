@@ -17,53 +17,63 @@
 #include <libSphysl/utility.h>
 
 struct arg_t {
-	const size_t start_1, stop_1;
-	const size_t start_2, stop_2;
 	const double &G;
 
-	const std::vector<double> &xs, &ys, &zs;
-	const std::vector<double> &ms;
+	const double *m1_start, *m1_stop, *m2_start, *m2_stop;
 
-	std::vector<double> &F_xs, &F_ys, &F_zs;
+	const double *x1_start, *x2_start;
+	const double *y1_start, *y2_start;
+	const double *z1_start, *z2_start;
+
+	double *F1_x_start, *F2_x_start;
+	double *F1_y_start, *F2_y_start;
+	double *F1_z_start, *F2_z_start;
 };
 
-template<bool overlap, bool groups> static void calculator(void* arg) {
+template<bool overlap> static void calculator(void* arg) {
 	auto& data = *reinterpret_cast<arg_t*>(arg);
 
-	auto run_calculation = [&](size_t i, size_t j) {
-		const auto r = libSphysl::utility::vector_t{
-				data.xs[j], data.ys[j], data.zs[j]
-			} - libSphysl::utility::vector_t{
-				data.xs[i], data.ys[i], data.zs[i]
-			};
+	auto run_calculation = [&](
+		const double m1, const double m2,
+		const double x1, const double y1, const double z1,
+		const double x2, const double y2, const double z2,
+		double *F1_x, double *F1_y, double *F1_z,
+		double *F2_x, double *F2_y, double *F2_z
+	){
+		const auto r = libSphysl::utility::vector_t{x2, y2, z2}
+			- libSphysl::utility::vector_t{x1, y1, z1};
 
-		const auto F = (r * data.G * data.ms[i] * data.ms[j])
+		const auto F = (r * data.G * m1 * m2)
 			/ std::pow(r.length(), 3.0);
 
-		data.F_xs[i] += F.x; data.F_xs[j] -= F.x;
-		data.F_ys[i] += F.y; data.F_ys[j] -= F.y;
-		data.F_zs[i] += F.z; data.F_zs[j] -= F.z;
+		*F1_x += F.x; *F1_y += F.y; *F1_z += F.z;
+		*F2_x -= F.x; *F2_y -= F.y; *F2_z -= F.z;
 	};
 
+	auto x1 = *data.x1_start, y1 = *data.y1_start, z1 = *data.z1_start;
 
-	if constexpr(!groups) {
-		run_calculation(data.start_1, data.start_2);
-		return;
-	}
+	auto F1_x = data.F1_x_start, F1_y = data.F1_y_start;
+	auto F1_z = data.F1_z_start;
 
-	for(size_t i = data.start_1; i < data.stop_1; i++) {
-		if constexpr(overlap) {
-			for(size_t j = data.start_1; j < data.stop_1; j++) {
-				if(i == j) continue;
-				else run_calculation(i, j);
-			}
+	for(auto m1 = data.m1_start; m1 < data.m1_stop; m1++) {
+		auto x2 = *data.x2_start, y2 = *data.y2_start;
+		auto z2 = *data.z2_start;
+
+		auto F2_x = data.F2_x_start, F2_y = data.F2_y_start;
+		auto F2_z = data.F2_z_start;
+
+		for(auto m2 = data.m2_start; m2 < data.m2_stop; m2++) {
+			if constexpr(overlap) if(m1 == m2) continue;
+
+			run_calculation(
+				*m1, *m2, x1, y1, z1, x2, y2, z2,
+				F1_x, F1_y, F1_z, F2_x, F2_y, F2_z
+			);
+
+			x2++, y2++, z2++, F2_x++, F2_y++, F2_z++;
 		}
 
-		else {
-			for(size_t j = data.start_2; j < data.stop_2; j++) {
-				run_calculation(i, j);
-			}
-		}
+		x1++, y1++, z1++, F1_x++, F1_y++, F1_z++;
 	}
 }
 
@@ -93,18 +103,26 @@ libSphysl::gravity::classical(libSphysl::sandbox_t* s) {
 		size_t start_1, size_t stop_1, size_t start_2, size_t stop_2
 	){
 		return new arg_t{
-			start_1, stop_1, start_2, stop_2,
 			std::get<double>(G),
 
-			std::get<std::vector<double>>(xs),
-			std::get<std::vector<double>>(ys),
-			std::get<std::vector<double>>(zs),
+			&std::get<std::vector<double>>(ms)[start_1],
+			&std::get<std::vector<double>>(ms)[stop_1],
+			&std::get<std::vector<double>>(ms)[start_2],
+			&std::get<std::vector<double>>(ms)[stop_2],
 
-			std::get<std::vector<double>>(ms),
+			&std::get<std::vector<double>>(xs)[start_1],
+			&std::get<std::vector<double>>(xs)[start_2],
+			&std::get<std::vector<double>>(ys)[start_1],
+			&std::get<std::vector<double>>(ys)[start_2],
+			&std::get<std::vector<double>>(zs)[start_1],
+			&std::get<std::vector<double>>(zs)[start_2],
 
-			std::get<std::vector<double>>(F_xs),
-			std::get<std::vector<double>>(F_ys),
-			std::get<std::vector<double>>(F_zs)
+			&std::get<std::vector<double>>(F_xs)[start_1],
+			&std::get<std::vector<double>>(F_xs)[start_2],
+			&std::get<std::vector<double>>(F_ys)[start_1],
+			&std::get<std::vector<double>>(F_ys)[start_2],
+			&std::get<std::vector<double>>(F_zs)[start_1],
+			&std::get<std::vector<double>>(F_zs)[start_2]
 		};
 	};
 
@@ -129,7 +147,7 @@ libSphysl::gravity::classical(libSphysl::sandbox_t* s) {
 	}
 
 	if(groups / 2 < concurrency) goto next;
-	else engine.calculator = calculator<true, true>;
+	else engine.calculator = calculator<true>;
 	
 	for(size_t i = 0; i < groups; i++) {
 		auto arg = new_arg(starts[i], stops[i], {}, {});
@@ -142,8 +160,7 @@ libSphysl::gravity::classical(libSphysl::sandbox_t* s) {
 next:	std::vector<bool> used(groups, false);
 	std::vector<std::vector<bool>> done(groups, used);
 
-	engine.calculator = groups / 2 < concurrency?
-		calculator<false, false> : calculator<false, true>;
+	engine.calculator = calculator<false>;
 
 	auto configure_engine = [&](size_t i, size_t j) {
 		if(!used[i] && !used[j]) {
