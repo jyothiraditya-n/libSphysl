@@ -113,3 +113,22 @@ void libSphysl::utility::randomise(
 		i = distribution(engine);
 	}
 }
+
+std::vector<std::pair<size_t, size_t>> libSphysl::utility::divide_range(
+	size_t start, size_t stop, size_t divisions
+){
+	return {};
+}
+
+void libSphysl::utility::get_combinations(
+	size_t total, size_t groupings, on_combination_t on_combination
+){
+	return;
+}
+
+void libSphysl::utility::get_combinations_exclusive(
+	size_t total, size_t groupings, on_combination_t on_combination,
+	on_exclusivity_end_t on_exclusivity_end
+){
+	return;
+}
