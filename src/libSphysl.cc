@@ -15,8 +15,6 @@
 
 /* Including Library Headerfiles */
 
-#include <iostream>
-
 #include <libSphysl.h>
 #include <libSphysl/utility.h>
 

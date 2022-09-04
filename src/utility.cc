@@ -13,28 +13,45 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include <cmath>
+/* Including Library Headerfiles */
 
 #include <libSphysl/utility.h>
 
+/* Function Definitions */
+
 double libSphysl::utility::vector_t::length() const {
+	/* Pythagoras theorem. */
 	return std::sqrt(x * x + y * y + z * z);
 }
 
 double libSphysl::utility::vector_t::lengthsq() const {
+	/* Pythagoras theorem. */
 	return x * x + y * y + z * z;
 }
 
 libSphysl::utility::vector_t libSphysl::utility::vector_t::operator-() const {
+	/* Return a vector of our values negated. */
 	return {-x, -y, -z};
 }
 
 double libSphysl::utility::vector_t::dot(const vector_t& v) const {
+	/* Multiply each of the components and return the sum. */
 	return x * v.x + y * v.y + z * v.z;
 }
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::cross(const vector_t& v) const {
+	/* Let's say the following are your vectors a and b:
+	 * a = <a1, a2, a3>, b = <b1, b2, b3>
+	 *
+	 * The way you get the dot product is by getting the determinant of the
+	 * following matrix:
+	 * | i  j  k  |
+	 * | a1 a2 a3 |
+	 * | b1 b2 b3 |*/
+
+	/* The derivation of the return expression is left as an exercise to
+	 * the reader. */
 	return {
 		(y * v.z) - (v.y * z),
 		(v.x * z) - (x * v.z),
@@ -44,47 +61,54 @@ libSphysl::utility::vector_t::cross(const vector_t& v) const {
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::operator+(const vector_t& v) const {
+	// Add the components and return a vector of the results.
 	return {x + v.x, y + v.y, z + v.z};
 }
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::operator-(const vector_t& v) const {
+	// Subtract the components and return a vector of the results.
 	return {x - v.x, y - v.y, z - v.z};
 }
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::operator*(const double d) const {
+	// Scale the components and return the results.
 	return {x * d, y * d, z * d};
 }
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::operator/(const double d) const {
+	// Scale and return the results.
 	return {x / d, y / d, z / d};
 }
 
 void libSphysl::utility::null_calculator(void* arg) {
-	(void) arg;
+	(void) arg; // Do nothing.
 }
 
 void libSphysl::utility::null_destructor(libSphysl::engine_t* e) {
-	(void) e;
+	(void) e; // Do nothing.
 }
 
 double libSphysl::utility::random(const double min, const double max) {
-	std::random_device device;
-	std::mt19937 engine{device()};
+	std::random_device device; // Random data generator.
+	std::mt19937 engine{device()}; // Random number generator.
 	std::uniform_real_distribution<double> distribution(min, max);
+	// Distribution generator.
 
-	return distribution(engine);
+	return distribution(engine); // Return the random number.
 }
 
 void libSphysl::utility::randomise(
 	std::vector<double>& v, const double min, const double max
 ){
-	std::random_device device;
-	std::mt19937 engine{device()};
+	std::random_device device; // Random data generator.
+	std::mt19937 engine{device()}; // Random number generator.
 	std::uniform_real_distribution<double> distribution(min, max);
+	// Distribution generator.
 
+	/* Loop over the vector and set all the values to random ones. */
 	for(auto &i: v) {
 		i = distribution(engine);
 	}
