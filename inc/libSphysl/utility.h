@@ -239,7 +239,7 @@ void randomise(std::vector<double>& v, const double min, const double max);
 /* This will evenly divide a range into subranges and return their start and
  * stop values (start inclusive, stop non-inclusive) in pairs. */
 std::vector<std::pair<size_t, size_t>> divide_range(
-	size_t start, size_t stop, size_t divisions
+	const size_t start, const size_t stop, const size_t divisions
 );
 
 /* Type definitions for callback functions. */
@@ -250,14 +250,16 @@ typedef std::function<void()> on_exclusivity_end_t;
  * calling the callback function with a vector of their ids, when creating
  * groups of the size <groupings> */
 void get_combinations(
-	size_t total, size_t groupings, on_combination_t on_combination
+	const size_t total, const size_t groupings,
+	on_combination_t on_combination
 );
 
 /* This does the same, but it organises the combinations into sets where each
  * combination uses each entity only once. When one set is over, it signals
  * the start of the next with a call to on_exclusivity_end. */
 void get_combinations_exclusive(
-	size_t total, size_t groupings, on_combination_t on_combination,
+	const size_t total, const size_t groupings,
+	on_combination_t on_combination,
 	on_exclusivity_end_t on_exclusivity_end
 );
 
