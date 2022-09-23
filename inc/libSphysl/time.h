@@ -34,5 +34,8 @@ libSphysl::engine_t realtime(libSphysl::sandbox_t* s);
 libSphysl::engine_t constrained(libSphysl::sandbox_t* s);
 libSphysl::engine_t constant(libSphysl::sandbox_t* s);
 
+/* Relevant config values in the sandbox are "time" (double),"time change"
+ * (double) and "simulation tick" (size_t). */
+
 }
 #endif

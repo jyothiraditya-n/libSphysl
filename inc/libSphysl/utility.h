@@ -71,7 +71,7 @@ struct vector_t {
 /* Tl;dr: std::vector_t<double> values(10, 1.0);
  *        slice_t<double> value1(values, 0, 5), value2(values, 5, 10);
  *        for(auto& v1: value1) {
- *	          value1 += value2++;
+ *	          v1 += value2++;
  *        }
  *        value1.goto_begin();
  *        std::cout << value1(); // 2.0 */
