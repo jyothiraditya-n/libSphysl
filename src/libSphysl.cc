@@ -300,7 +300,12 @@ static bool init(
 
 libSphysl::data_vector_t&
 libSphysl::sandbox_t::database_get(const std::string& id) {
-	const auto total = std::get<size_t>(this -> config_get("entity count"));
+	/* We need to know how many entities there are in the system, as that
+	 * determines the number of rows in the database if we need to insert
+	 * another column. */
+	const auto total = std::get<size_t>(
+		this -> config_get("entity count")
+	);
 
 	/* If the entry exists in the database, return it. */
 	try {return this -> database.at(id);}
