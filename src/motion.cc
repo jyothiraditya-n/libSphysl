@@ -69,6 +69,9 @@ static libSphysl::utility::slice_t<double> get_slice(
 	std::vector<double> &v, size_t start, size_t stop
 );
 
+/* This function returns the factorial of a positive integer. */
+static size_t factorial(const size_t n);
+
 /* This is the calculator that we will be using for the engines. */
 template<bool relativistic, bool smoothed> static void calculator(void *arg);
 
@@ -170,15 +173,29 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 		0, entities, threads
 	);
 
+	/* This is a lambda function that's called immediately. The main reason
+	 * it exists is to get us the appropriate initialiser funciton for
+	 * creating an arg_t object with respect to whether we're applying
+	 * smoothing or not. */
+
 	auto initialiser = [&]() {
+		/* We return one of two lambda functions, both of which have
+		 * the same parameters and return type, which is why this is
+		 * legal as far as the compiler is concerned. */
+
 		if constexpr(!smoothed) return [&](
 			size_t start, size_t stop, size_t depth
 		){
 			(void) depth;
+			/* We don't use the depth parameter unless we're going
+			 * to apply smoothing. */
 
+			/* Generate it on the heap, it will be cleaned up when
+			 * libSphysl::utility::destructor<arg_t>() runs. */
 			return new arg_t{
 				delta_t,
 				
+				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
 
 				get_silce(xs, start, stop),
@@ -197,6 +214,8 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 				get_silce(F_ys, start, stop),
 				get_silce(F_zs, start, stop),
 				
+				/* The following values aren't used, so we will
+				 * null them out here. */
 
 				{}, {}, // depth, initialised.
 				{}, {}, {}, // dv_xs, dv_ys, dv_zs.
@@ -206,20 +225,29 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 		};
 
 		else return [&](size_t start, size_t stop, size_t length) {
-			static std::vector<
-				std::vector<std::pair<double, double>>
-			> pairs(length, {depth, {0.0, 0.0}});
+			/* Each of the d<...>_<...>s in the main structure are
+			 * vectors of vectors of pairs with dimensions length
+			 * x depth. We create a blank set up of the same here
+			 * so that we can copy it into structure a bunch of
+			 * times. */
+			std::vector<std::vector<std::pair<double, double>>>
+				pairs(length, {depth, {0.0, 0.0}});
 
-			static std::vector<double> coeffs(depth);
-			if(!coeffs[0]) {
-				for(size_t i = 0; i < depth; i++) {
-					coeffs[i] = factorial(i + 1);
-				}
+			/* The coefficients are just a simple set of factorials
+			 * up to the depth. Expensive to recompute constantly
+			 * at runtime, but not too expensive to wastefully
+			 * recompute every time this lambda is run like we're
+			 * doing here. */
+			std::vector<double> coeffs(depth);
+
+			for(size_t i = 0; i < depth; i++) {
+				coeffs[i] = factorial(i + 1);
 			}
 
 			return new arg_t{
 				delta_t,
 				
+				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
 
 				get_silce(xs, start, stop),
@@ -262,7 +290,21 @@ static std::vector<double>& get_doubles(
 static libSphysl::utility::slice_t<double> get_slice(
 	std::vector<double> &v, size_t start, size_t stop
 ){
+	/* No need to keep typing this sentence again and again! */
 	return libSphysl::utility::slice_t<double>(v, start, stop);
+}
+
+static size_t factorial(const size_t n) {
+	/* A simple implementation of a factorial calculation, no further
+	 * comments needed. */
+
+	size_t x = 1;
+
+	for(size_t i = 2; i <= n; i++) {
+		x *= i;
+	}
+
+	return x;
 }
 
 template<bool relativistic, bool smoothed> static void calculator(void *arg) {
