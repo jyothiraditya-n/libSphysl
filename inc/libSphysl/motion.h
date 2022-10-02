@@ -34,15 +34,11 @@ namespace libSphysl::motion {
 /* Naturally, movement can be either follow classical mechanics or relativistic
  * mechanics. */
 
-std::list<libSphysl::engine_t> classical(libSphysl::sandbox_t* s);
-std::list<libSphysl::engine_t> classical(
-        libSphysl::sandbox_t* s, size_t smoothing
-);
+libSphysl::engine_t classical(libSphysl::sandbox_t* s);
+libSphysl::engine_t classical(libSphysl::sandbox_t* s, size_t smoothing);
 
-std::list<libSphysl::engine_t> relativistic(libSphysl::sandbox_t* s);
-std::list<libSphysl::engine_t> relativistic(libSphysl::sandbox_t* s,
-        size_t smoothing
-);
+libSphysl::engine_t relativistic(libSphysl::sandbox_t* s);
+libSphysl::engine_t relativistic(libSphysl::sandbox_t* s, size_t smoothing);
 
 /* The relevant config value in the sandbox is "time change" (double). */
 

@@ -78,8 +78,7 @@ struct vector_t {
 
 template<typename T> struct slice_t {
 	std::vector<T>& vector; // Vector we are slicing.
-	T* start, stop; // Start and stop iterators.
-	T* data; // Current iterator.
+	T *start, *stop, *data; // Start and stop iterators, current iterator.
 
 	slice_t() {}; // Don't do anything if we haven't been given anything.
 
@@ -101,8 +100,8 @@ template<typename T> struct slice_t {
 	slice_t(std::vector<T>& vector, size_t start, size_t stop):
 		/* Initialise the variables, set the current iterator to the
 		 * start. */
-		vector{vector}, start{&vector[start]}, data{&vector[start]},
-		stop{&vector[stop]}
+		vector{vector}, start{&vector[start]}, stop{&vector[stop]},
+		data{&vector[start]}
 	{}
 
 	/* Advance the iterator or move backwards. */
@@ -135,48 +134,62 @@ template<typename T> struct slice_t {
 	T* end  () const{return this -> stop; }
 
 	/* Get the value or a negated version of it. */
-	T& operator()() const{return *(this -> T);}
-	T  operator- () const{return -*this;      }
+	T& operator()() const{return  *(this -> data);}
+	T  operator- () const{return -*(this -> data);}
 
 	/* Do something to the value and return the result. */
-	T operator+(const T& t) const{return this -> data + t;}
-	T operator-(const T& t) const{return this -> data - t;}
-	T operator*(const T& t) const{return this -> data * t;}
-	T operator/(const T& t) const{return this -> data * t;}
+	T operator+(const T& t) const{return *(this -> data) + t;}
+	T operator-(const T& t) const{return *(this -> data) - t;}
+	T operator*(const T& t) const{return *(this -> data) * t;}
+	T operator/(const T& t) const{return *(this -> data) * t;}
 
 	/* The same, but in case we're dealing with another slice. */
-	T operator+(const slice_t<T>& s) const{return this -> data + s();}
-	T operator-(const slice_t<T>& s) const{return this -> data - s();}
-	T operator*(const slice_t<T>& s) const{return this -> data * s();}
-	T operator/(const slice_t<T>& s) const{return this -> data * s();}
+	T operator+(const slice_t<T>& s) const{return *(this -> data) + s();}
+	T operator-(const slice_t<T>& s) const{return *(this -> data) - s();}
+	T operator*(const slice_t<T>& s) const{return *(this -> data) * s();}
+	T operator/(const slice_t<T>& s) const{return *(this -> data) * s();}
 
 	/* The same, but also store the result. */
-	T& operator= (const T& t) {return this -> data =  t;}
-	T& operator+=(const T& t) {return this -> data += t;}
-	T& operator-=(const T& t) {return this -> data -= t;}
-	T& operator*=(const T& t) {return this -> data *= t;}
-	T& operator/=(const T& t) {return this -> data /= t;}
+	T& operator= (const T& t) {return *(this -> data) =  t;}
+	T& operator+=(const T& t) {return *(this -> data) += t;}
+	T& operator-=(const T& t) {return *(this -> data) -= t;}
+	T& operator*=(const T& t) {return *(this -> data) *= t;}
+	T& operator/=(const T& t) {return *(this -> data) /= t;}
 
 	/* The same, but if we're again dealing with another slice. */
-	T& operator= (const slice_t<T>& s) {return this -> data =  s();}
-	T& operator+=(const slice_t<T>& s) {return this -> data += s();}
-	T& operator-=(const slice_t<T>& s) {return this -> data -= s();}
-	T& operator*=(const slice_t<T>& s) {return this -> data *= s();}
-	T& operator/=(const slice_t<T>& s) {return this -> data /= s();}
+	T& operator= (const slice_t<T>& s) {return *(this -> data) =  s();}
+	T& operator+=(const slice_t<T>& s) {return *(this -> data) += s();}
+	T& operator-=(const slice_t<T>& s) {return *(this -> data) -= s();}
+	T& operator*=(const slice_t<T>& s) {return *(this -> data) *= s();}
+	T& operator/=(const slice_t<T>& s) {return *(this -> data) /= s();}
 
 	/* Compare and return true or false. */
-	bool operator< (const T& t) const{return this -> data <  t;}
-	bool operator> (const T& t) const{return this -> data >  t;}
-	bool operator==(const T& t) const{return this -> data == t;}
-	bool operator<=(const T& t) const{return this -> data <= t;}
-	bool operator>=(const T& t) const{return this -> data >= t;}
+	bool operator< (const T& t) const{return *(this -> data) <  t;}
+	bool operator> (const T& t) const{return *(this -> data) >  t;}
+	bool operator==(const T& t) const{return *(this -> data) == t;}
+	bool operator<=(const T& t) const{return *(this -> data) <= t;}
+	bool operator>=(const T& t) const{return *(this -> data) >= t;}
 
 	/* The same, but for interacting with slices. */
-	bool operator< (const slice_t<T>& s) const{return this -> data <  s();}
-	bool operator> (const slice_t<T>& s) const{return this -> data >  s();}
-	bool operator==(const slice_t<T>& s) const{return this -> data == s();}
-	bool operator<=(const slice_t<T>& s) const{return this -> data <= s();}
-	bool operator>=(const slice_t<T>& s) const{return this -> data >= s();}
+	bool operator< (const slice_t<T>& s) const {
+		return *(this -> data) <  s();
+	}
+
+	bool operator> (const slice_t<T>& s) const {
+		return *(this -> data) >  s();
+	}
+
+	bool operator==(const slice_t<T>& s) const {
+		return *(this -> data) == s();
+	}
+
+	bool operator<=(const slice_t<T>& s) const {
+		return *(this -> data) <= s();
+	}
+
+	bool operator>=(const slice_t<T>& s) const {
+		return *(this -> data) >= s();
+	}
 };
 
 /* Function Declarations */

@@ -51,17 +51,17 @@ struct arg_t {
 
 /* This is the templated function that generates all the engines. */
 template<bool relativistic, bool smoothed>
-static std::list<libSphysl::engine_t> generator(
+static libSphysl::engine_t generator(
 	libSphysl::sandbox_t* s, size_t smoothing
 );
 
 /* These are functions that helps avoid repeating code when we're fetching
  * doubles from the config nad vectors of doubles from the database. */
 
-static double& get_double(libSphysl::sandbox_t* s, std::string& id);
+static double& get_double(libSphysl::sandbox_t* s, const std::string& id);
 
 static std::vector<double>& get_doubles(
-	libSphysl::sandbox_t* s, std::string& id
+	libSphysl::sandbox_t* s, const std::string& id
 );
 
 /* This function generates a slice_t<double> of the type we need. */
@@ -93,50 +93,44 @@ template<bool relativistic> static void calculate_acceleration(arg_t& data);
  * velocity and velocity for distance. */
 static void smoothly_integrate(
 	double& I_x, double& I_y, double& I_z,
-	double& f_x, double& f_z, double& f_z,
+	double& f_x, double& f_y, double& f_z,
 
 	std::vector<std::pair<double, double>>& d_xs,
 	std::vector<std::pair<double, double>>& d_ys,
 	std::vector<std::pair<double, double>>& d_zs,
 
-	const double& delta_t,
-	std::vector<double>& coeffs
+	const arg_t& data
 );
 
 /* Function Definitions */
 
-std::list<libSphysl::engine_t>
-libSphysl::motion::classical(libSphysl::sandbox_t* s) {
+libSphysl::engine_t libSphysl::motion::classical(libSphysl::sandbox_t* s) {
 	/* Call the templated generator with the appropriate parameters. */
 	return generator<false, false>(s, 0);
 }
 
-std::list<libSphysl::engine_t>
+libSphysl::engine_t
 libSphysl::motion::classical(libSphysl::sandbox_t* s, size_t smoothing){
 	/* Call the templated generator with the appropriate parameters. */
 	return generator<false, true>(s, smoothing);
 }
 
-std::list<libSphysl::engine_t>
-libSphysl::motion::relativistic(libSphysl::sandbox_t* s) {
+libSphysl::engine_t libSphysl::motion::relativistic(libSphysl::sandbox_t* s) {
 	/* Call the templated generator with the appropriate parameters. */
 	return generator<true, false>(s, 0);
 }
 
-std::list<libSphysl::engine_t>
+libSphysl::engine_t
 libSphysl::motion::relativistic(libSphysl::sandbox_t* s, size_t smoothing) {
 	/* Call the templated generator with the appropriate parameters. */
 	return generator<true, true>(s, smoothing);
 }
 
 template<bool relativistic, bool smoothed>
-static std::list<libSphysl::engine_t>
-generator(libSphysl::sandbox_t* s, size_t smoothing) {
-	/* This is the list of engines we are returning. */
-	std::list<libSphyl::engine_t> engines;
-
-	/* This is the data we will be manipulating and pushing onto the list
-	 * as we generate each of the engines. */
+static libSphysl::engine_t generator(
+	libSphysl::sandbox_t* s, size_t smoothing
+){
+	/* This is the engine we will be returning. */
 	libSphysl::engine_t engine;
 
 	/* Set up the engine with the correct parameters. */
@@ -144,28 +138,28 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 	engine.destructor = libSphysl::utility::destructor<arg_t>;
 
 	/* Get the variables we need from the config. */
-	const auto& entities = get_double("entity count");
-	const auto& delta_t  = get_double("time change");
+	const auto& entities = get_double(s, "entity count");
+	const auto& delta_t  = get_double(s, "time change");
 	const auto  threads  = s -> threads.size(); // Not stored in config.
 
 	/* Get the variables we need from the database. */
-	auto& ms = get_doubles("mass");
+	auto& ms = get_doubles(s, "mass");
 
-	auto& xs = get_doubles("x position");
-	auto& ys = get_doubles("y position");
-	auto& zs = get_doubles("z position");
+	auto& xs = get_doubles(s, "x position");
+	auto& ys = get_doubles(s, "y position");
+	auto& zs = get_doubles(s, "z position");
 
-	auto& v_xs = get_doubles("x velocity");
-	auto& v_ys = get_doubles("y velocity");
-	auto& v_zs = get_doubles("z velocity");
+	auto& v_xs = get_doubles(s, "x velocity");
+	auto& v_ys = get_doubles(s, "y velocity");
+	auto& v_zs = get_doubles(s, "z velocity");
 
-	auto& a_xs = get_doubles("x acceleration");
-	auto& a_ys = get_doubles("y acceleration");
-	auto& a_zs = get_doubles("z acceleration");
+	auto& a_xs = get_doubles(s, "x acceleration");
+	auto& a_ys = get_doubles(s, "y acceleration");
+	auto& a_zs = get_doubles(s, "z acceleration");
 
-	auto& F_xs = get_doubles("x force");
-	auto& F_ys = get_doubles("y force");
-	auto& F_zs = get_doubles("z force");
+	auto& F_xs = get_doubles(s, "x force");
+	auto& F_ys = get_doubles(s, "y force");
+	auto& F_zs = get_doubles(s, "z force");
 
 	/* Figure out the division of labour; which threads are going to be
 	 * responsible for which range of the entities in the system. */
@@ -198,21 +192,21 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
 
-				get_silce(xs, start, stop),
-				get_silce(ys, start, stop),
-				get_silce(zs, start, stop),
+				get_slice(xs, start, stop),
+				get_slice(ys, start, stop),
+				get_slice(zs, start, stop),
 
-				get_silce(v_xs, start, stop),
-				get_silce(v_ys, start, stop),
-				get_silce(v_zs, start, stop),
+				get_slice(v_xs, start, stop),
+				get_slice(v_ys, start, stop),
+				get_slice(v_zs, start, stop),
 
-				get_silce(a_xs, start, stop),
-				get_silce(a_ys, start, stop),
-				get_silce(a_zs, start, stop),
+				get_slice(a_xs, start, stop),
+				get_slice(a_ys, start, stop),
+				get_slice(a_zs, start, stop),
 
-				get_silce(F_xs, start, stop),
-				get_silce(F_ys, start, stop),
-				get_silce(F_zs, start, stop),
+				get_slice(F_xs, start, stop),
+				get_slice(F_ys, start, stop),
+				get_slice(F_zs, start, stop),
 				
 				/* The following values aren't used, so we will
 				 * null them out here. */
@@ -224,14 +218,14 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 			};
 		};
 
-		else return [&](size_t start, size_t stop, size_t length) {
+		else return [&](size_t start, size_t stop, size_t depth) {
 			/* Each of the d<...>_<...>s in the main structure are
 			 * vectors of vectors of pairs with dimensions length
 			 * x depth. We create a blank set up of the same here
 			 * so that we can copy it into structure a bunch of
 			 * times. */
 			std::vector<std::vector<std::pair<double, double>>>
-				pairs(length, {depth, {0.0, 0.0}});
+				pairs(stop - start, {depth, {0.0, 0.0}});
 
 			/* The coefficients are just a simple set of factorials
 			 * up to the depth. Expensive to recompute constantly
@@ -250,21 +244,21 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
 
-				get_silce(xs, start, stop),
-				get_silce(ys, start, stop),
-				get_silce(zs, start, stop),
+				get_slice(xs, start, stop),
+				get_slice(ys, start, stop),
+				get_slice(zs, start, stop),
 
-				get_silce(v_xs, start, stop),
-				get_silce(v_ys, start, stop),
-				get_silce(v_zs, start, stop),
+				get_slice(v_xs, start, stop),
+				get_slice(v_ys, start, stop),
+				get_slice(v_zs, start, stop),
 
-				get_silce(a_xs, start, stop),
-				get_silce(a_ys, start, stop),
-				get_silce(a_zs, start, stop),
+				get_slice(a_xs, start, stop),
+				get_slice(a_ys, start, stop),
+				get_slice(a_zs, start, stop),
 
-				get_silce(F_xs, start, stop),
-				get_silce(F_ys, start, stop),
-				get_silce(F_zs, start, stop),
+				get_slice(F_xs, start, stop),
+				get_slice(F_ys, start, stop),
+				get_slice(F_zs, start, stop),
 
 				depth, false, // initialised.
 				pairs, pairs, pairs, // dv_xs, dv_ys, dv_zs.
@@ -273,18 +267,28 @@ generator(libSphysl::sandbox_t* s, size_t smoothing) {
 			};
 		};
 	}();
+
+	/* For all of the ranges, construct an approriate arg_t and add it to
+	 * the list of args we have for our engine. */
+	for(const auto& i: ranges) {
+		const auto arg = initialiser(i.first, i.second, smoothing);
+		engine.args.push_back(reinterpret_cast<void*>(arg));
+	}
+
+	/* Return the engine we have generated. */
+	return engine;
 }
 
-static double& get_double(libSphysl::sandbox_t* s, std::string& id) {
+static double& get_double(libSphysl::sandbox_t* s, const std::string& id) {
 	/* No need to keep typing this sentence again and again! */
-	return std::get<double>(s -> config_get("id"));
+	return std::get<double>(s -> config_get(id));
 }
 
 static std::vector<double>& get_doubles(
-	libSphysl::sandbox_t* s, std::string& id
+	libSphysl::sandbox_t* s, const std::string& id
 ){
 	/* No need to keep typing this sentence again and again! */
-	return std::get<std::vector<double>>(s -> database_get("id"));
+	return std::get<std::vector<double>>(s -> database_get(id));
 }
 
 static libSphysl::utility::slice_t<double> get_slice(
@@ -309,17 +313,19 @@ static size_t factorial(const size_t n) {
 
 template<bool relativistic, bool smoothed> static void calculator(void *arg) {
 	/* Get a reference to our cached data by casting the argument. */
-	auto& data = reinterpret_cast<arg_t*>(arg);
+	auto& data = *reinterpret_cast<arg_t*>(arg);
 
 	/* Get our helper function. We do this so that we only check if the
 	 * data is initialised once per function call at runtime. */
-	auto helper = constexpr !smoothed? simple_helper<relativistic>:
+	const auto helper = (!smoothed)? simple_helper<relativistic>:
 		(data.initialised? smoothed_helper<relativistic, true>:
 		smoothed_helper<relativistic, false>);
 
 	/* Loop across the slices and compute for each entity. */
 	size_t i = 0; // Index variable that we'll use for our caching vectors.
-	for(const auto& m: data.ms) {
+	for(const auto& m: data.m) {
+		(void) m; // We don't actually use this index variable.
+
 		/* Call the appropriate helper function. */
 		helper(i, data);
 
@@ -327,6 +333,8 @@ template<bool relativistic, bool smoothed> static void calculator(void *arg) {
 		data.F_x = data.F_y = data.F_z = 0.0;
 
 		/* Step the slices forward. */
+		data.m++;
+
 		data.F_x++; data.F_y++; data.F_z++;
 		data.a_x++; data.a_y++; data.a_z++;
 		data.v_x++; data.v_y++; data.v_z++;
@@ -383,14 +391,14 @@ static void smoothed_helper(size_t i, arg_t& data) {
 		 * already entered in the database. */
 
 		/* Copy the acceleration values over. */
-		data.da_xs[i][0].first = data.a_x;
-		data.da_ys[i][0].first = data.a_y;
-		data.da_zs[i][0].first = data.a_z;
+		data.da_xs[i][0].first = data.a_x();
+		data.da_ys[i][0].first = data.a_y();
+		data.da_zs[i][0].first = data.a_z();
 
 		/* Copy the velocity values over. */
-		data.dv_xs[i][0].first = data.v_x;
-		data.dv_ys[i][0].first = data.v_y;
-		data.dv_zs[i][0].first = data.v_z;
+		data.dv_xs[i][0].first = data.v_x();
+		data.dv_ys[i][0].first = data.v_y();
+		data.dv_zs[i][0].first = data.v_z();
 	}
 
 	/* The old new is the new old. Migrate the cache to prepare to
@@ -415,14 +423,14 @@ static void smoothed_helper(size_t i, arg_t& data) {
 		data.v_x(), data.v_y(), data.v_z(),
 		data.a_x(), data.a_y(), data.a_z(),
 		data.da_xs[i], data.da_ys[i], data.da_zs[i],
-		data.delta_t, data.coeffs
+		data
 	);
 
 	smoothly_integrate(
 		data.x(), data.y(), data.z(),
 		data.v_x(), data.v_y(), data.v_z(),
 		data.dv_xs[i], data.dv_ys[i], data.dv_zs[i],
-		data.delta_t, data.coeffs
+		data
 	);
 }
 
@@ -444,33 +452,32 @@ static void calculate_acceleration(arg_t& data) {
 
 static void smoothly_integrate(
 	double& I_x, double& I_y, double& I_z,
-	double& f_x, double& f_z, double& f_z,
+	double& f_x, double& f_y, double& f_z,
 
 	std::vector<std::pair<double, double>>& d_xs,
 	std::vector<std::pair<double, double>>& d_ys,
 	std::vector<std::pair<double, double>>& d_zs,
 
-	const double& delta_t,
-	std::vector<double>& coeffs
+	const arg_t& data
 ){
 	/* Grab the current values of the function we are integrating as the
 	 * current values of the 0th derivative (which is to say, the function
 	 * itself). */
-	d_xs.first = f_x;
-	d_ys.first = f_y;
-	d_zs.first = f_z;
+	d_xs[0].first = f_x;
+	d_ys[0].first = f_y;
+	d_zs[0].first = f_z;
 
 	/* The first term in the Maclaurin series is the same as the unsmoothed
 	 * integration, as the power of delta_t is 1 and the coefficient and
 	 * respective factorial are also 1. */
-	I_x += f_x * delta_t;
-	I_y += f_y * delta_t;
-	I_z += f_z * delta_t;
+	I_x += f_x * data.delta_t;
+	I_y += f_y * data.delta_t;
+	I_z += f_z * data.delta_t;
 
 	/* Cache 1 / delta_t since multiplication is faster than division,
 	 * and we want to minimise the number of times we call the division
 	 * operator. */
-	const auto I_t = 1 / delta_t;
+	const auto I_t = 1 / data.delta_t;
 
 	/* Iterate through all the other terms of the Maclaurin series we are
 	 * using to smoothe the reconstructed integrated value. */
@@ -487,9 +494,10 @@ static void smoothly_integrate(
 		 * term in the Maclaurin series before adding it to the value
 		 * of the integrated term we are computing. */
 
-		const auto factor = std::pow(delta_t, i + 1.0) / coeffs[i];
 		/* Dvisions and calls to std::pow are slow so let's cache this
-		 * value. */
+		 * value before we use it. */
+		const auto factor = std::pow(data.delta_t, i + 1.0)
+			/ data.coeffs[i];
 
 		I_x += d_xs[i].first * factor;
 		I_y += d_ys[i].first * factor;
