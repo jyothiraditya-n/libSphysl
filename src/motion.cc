@@ -138,7 +138,10 @@ static libSphysl::engine_t generator(
 	engine.destructor = libSphysl::utility::destructor<arg_t>;
 
 	/* Get the variables we need from the config. */
-	const auto& entities = get_double(s, "entity count");
+	const auto& entities = std::get<size_t>(
+		s -> config_get("entity count")
+	);
+
 	const auto& delta_t  = get_double(s, "time change");
 	const auto  threads  = s -> threads.size(); // Not stored in config.
 

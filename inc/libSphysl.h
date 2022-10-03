@@ -200,7 +200,7 @@ inline config_t default_entry_values{
 	{"y acceleration", 0.0},
 	{"z acceleration", 0.0},
 
-	{"x force", 0.0}, // netwons
+	{"x force", 0.0}, // Netwons
 	{"y force", 0.0},
 	{"z force", 0.0},
 

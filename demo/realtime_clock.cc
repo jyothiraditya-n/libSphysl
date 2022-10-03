@@ -67,15 +67,15 @@ void display(void *arg) {
 
 	/* Cache references to the variables we use. */
 	static const auto& time = std::get<double>(
-		sandbox.config.at("time")
+		sandbox.config_get("time")
 	);
 
 	static const auto& tick = std::get<size_t>(
-		sandbox.config.at("simulation tick")
+		sandbox.config_get("simulation tick")
 	);
 
 	static const auto& delta_t = std::get<double>(
-		sandbox.config.at("time change")
+		sandbox.config_get("time change")
 	);
 
 	/* Clear the screen and move the cursor back to the home position

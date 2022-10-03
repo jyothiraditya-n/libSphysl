@@ -67,6 +67,24 @@ void libSphysl::workset_t::run() {
 	/* For a full run-down on the way the threads are coordinated, please
 	 * refer to the file <docs/thread_synchronisation.md>. */
 
+	/* As an exception for the sake of performance, when there is either
+	 * only one thread in the system / only one listing, we don't bother
+	 * transferring it to the helper threads and just run it ourselves.
+	 * This saves us a good amount of time in costly mutex management. */
+
+	if(this -> listings.size() == 1) {
+		/* Cache a reference to the only listing. */
+		auto& listing = this -> listings[0];
+
+		/* Run the calculator on the args from the only listing. */
+		for(auto& i: listing.second) {
+			listing.first(i);
+		}
+
+		/* Exit out, since our work here is done. */
+		return;
+	}
+
 	/* For every step, we are going to simultaneously iterate through the
 	 * listings as well as the threads, so we should cache this iterator
 	 * for better performance. */
