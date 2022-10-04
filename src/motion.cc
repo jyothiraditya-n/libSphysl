@@ -23,6 +23,7 @@
 /* This is the argument that's gonig to be passed to the calculators. */
 struct arg_t {
 	const double& delta_t; // Time elapsed per simulation tick.
+	const double& c; // The speed of light.
 
 	libSphysl::utility::slice_t<double> m; // Masses.
 	libSphysl::utility::slice_t<double> x, y, z; // Positions.
@@ -142,8 +143,10 @@ static libSphysl::engine_t generator(
 		s -> config_get("entity count")
 	);
 
-	const auto& delta_t  = get_double(s, "time change");
-	const auto  threads  = s -> threads.size(); // Not stored in config.
+	const auto threads = s -> threads.size(); // Not stored in config.
+
+	const auto& delta_t = get_double(s, "time change");
+	const auto& c = get_double(s, "light speed");
 
 	/* Get the variables we need from the database. */
 	auto& ms = get_doubles(s, "mass");
@@ -190,7 +193,7 @@ static libSphysl::engine_t generator(
 			/* Generate it on the heap, it will be cleaned up when
 			 * libSphysl::utility::destructor<arg_t>() runs. */
 			return new arg_t{
-				delta_t,
+				delta_t, c,
 				
 				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
@@ -242,7 +245,7 @@ static libSphysl::engine_t generator(
 			}
 
 			return new arg_t{
-				delta_t,
+				delta_t, c,
 				
 				/* Call our helper functions as appropriate. */
 				get_slice(ms, start, stop),
@@ -349,7 +352,7 @@ template<bool relativistic, bool smoothed> static void calculator(void *arg) {
 
 	/* Reset the slices back to the beginning. */
 	data.m.goto_begin();
-	
+
 	data.F_x.goto_begin(); data.F_y.goto_begin(); data.F_z.goto_begin();
 	data.a_x.goto_begin(); data.a_y.goto_begin(); data.a_z.goto_begin();
 	data.v_x.goto_begin(); data.v_y.goto_begin(); data.v_z.goto_begin();
@@ -451,7 +454,30 @@ static void calculate_acceleration(arg_t& data) {
 
 	/* Calculate acceleration relativistically. */
 	else {
-		/* TODO */
+		/* Construct relevant vectors out of data. */
+		const libSphysl::utility::vector_t
+			F(data.F_x, data.F_y, data.F_z),
+			v(data.v_x, data.v_y, data.v_z);
+
+		/* Gamma^2 = 1 / (1 - (v/c)^2) = 1 / (1 - v^2 / c^2). */
+		const auto gamma_sq = 1.0 / (1.0 - v.length_sq()
+			/ (data.c * data.c));
+
+		/* a_along_v = proj_v(F) / (m gamma^3)  | proj_v() projects
+		 * a_perp_v = F - proj_v(F) / (m gamma) | onto the v vector.
+		 * The derivation for the same can be found in footnote [1]. */
+
+		const auto a_along_v = v.proj(F)
+			/ (data.m * std::pow(gamma_sq, 1.5));
+
+		const auto a_perp_v = (F - v.proj(F))
+			/ (data.m * std::pow(gamma_sq, 0.5));
+
+		/* Sum the values and move the components into their respective
+		 * variables. */
+
+		const auto a = a_along_v + a_perp_v;
+		data.a_x = a.x; data.a_y = a.y; data.a_z = a.z;
 	}
 }
 
@@ -509,3 +535,5 @@ static void smoothly_integrate(
 		I_z += d_zs[i].first * factor;
 	}
 }
+
+/* [1] https://en.wikipedia.org/wiki/Relativistic_mechanics#Force */

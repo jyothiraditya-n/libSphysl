@@ -19,12 +19,24 @@
 
 /* Function Definitions */
 
+libSphysl::utility::vector_t::vector_t(double x, double y, double z):
+	x{x}, y{y}, z{z}
+{}
+
+libSphysl::utility::vector_t::vector_t(
+	libSphysl::utility::slice_t<double> x,
+	libSphysl::utility::slice_t<double> y,
+	libSphysl::utility::slice_t<double> z
+):
+	x{x()}, y{y()}, z{z()} // Call operator() to get their values.
+{}
+
 double libSphysl::utility::vector_t::length() const{
 	/* Pythagoras theorem. */
 	return std::sqrt(x * x + y * y + z * z);
 }
 
-double libSphysl::utility::vector_t::lengthsq() const{
+double libSphysl::utility::vector_t::length_sq() const{
 	/* Pythagoras theorem. */
 	return x * x + y * y + z * z;
 }
@@ -81,6 +93,16 @@ libSphysl::utility::vector_t
 libSphysl::utility::vector_t::operator/(const double d) const{
 	// Scale and return the results.
 	return {x / d, y / d, z / d};
+}
+
+libSphysl::utility::vector_t
+libSphysl::utility::vector_t::proj(const vector_t& v) const{
+	/* proj_u(v) = (v.u^ / u^.u^) * (u^); u^ is the unit vector along u.
+	 * = ((v.u / len(u)) / (u.u / len(u)^2)) * (u / len(u))
+	 * = (v.u / u.u) * u * len(u)^0 = (v.u / u.u) * u
+	 * = v.u * u / len(u)^2. */
+
+	return (*this) * v.dot(*this) / this -> length_sq();
 }
 
 void libSphysl::utility::null_calculator(void* arg) {

@@ -33,6 +33,8 @@ namespace libSphysl::utility {
  * it isn't part of the data_t or declared within libSphysl.h. It in mainly
  * meant to write calculations needings vector operations. */
 
+template<typename T> struct slice_t; // Forward declaration.
+
 struct vector_t {
 	double x, y, z; // Length of the vector along each axis.
 
@@ -41,8 +43,14 @@ struct vector_t {
 	 * std::pow() anyway since you can then avoid a needless call to
 	 * sqrt(). */
 
+	/* Two basic constructors for making a vector out of doubles and out
+	 * of slices (see below) of std::vectors of doubles. */
+
+	vector_t(double x, double y, double z);
+	vector_t(slice_t<double> x, slice_t<double> y, slice_t<double> z);
+
 	double length() const;
-	double lengthsq() const;
+	double length_sq() const;
 
 	vector_t operator-() const; // Unary negation operator.
 
@@ -54,6 +62,10 @@ struct vector_t {
 
 	vector_t operator*(const double d) const; // Scalar operations.
 	vector_t operator/(const double d) const;
+
+	/* This function returns the projection of a given vector onto the line
+	 * that is formed along our vector. */
+	vector_t proj(const vector_t& v) const;
 };
 
 /* A slice of a vector is an iterable peek at the vector from a defined start
