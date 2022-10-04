@@ -32,7 +32,7 @@ libSphysl::sandbox_t sandbox(1);
 
 /* Function Declarations */
 
-/* This function is going to be used to print the simulation time, the
+/* This function is going to be used to print the simulation time info, the
  * displacement, velocity and kinetic energy of the mass on the spring and the
  * kinetic energy of the overall system. */
 void display(void *arg);
@@ -77,7 +77,7 @@ int main() {
 
 	/* Clear std::cout and configure it to output doubles in the way we
 	 * want. This usse ANSI escape codes, see endnote [1] for more. */
-	std::cout << "\033[2J" << std::scientific << std::setprecision(2);
+	std::cout << "\033[2J" << std::fixed << std::setprecision(2);
 
 	/* Start the sandbox and loop forever. C++ will handle exiting and
 	 * cleanup when the user hits ^C to stop program execution.. */
@@ -93,7 +93,7 @@ void display(void *arg) {
 
 	/* Cache references to the variables we use. */
 	static const auto& t = std::get<double>(
-		sandbox.config.at("time")
+		sandbox.config_get("time")
 	);
 
 	/* For the displacement and the velocity, we only use the x-axis of the

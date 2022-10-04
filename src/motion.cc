@@ -348,6 +348,8 @@ template<bool relativistic, bool smoothed> static void calculator(void *arg) {
 	}
 
 	/* Reset the slices back to the beginning. */
+	data.m.goto_begin();
+	
 	data.F_x.goto_begin(); data.F_y.goto_begin(); data.F_z.goto_begin();
 	data.a_x.goto_begin(); data.a_y.goto_begin(); data.a_z.goto_begin();
 	data.v_x.goto_begin(); data.v_y.goto_begin(); data.v_z.goto_begin();
