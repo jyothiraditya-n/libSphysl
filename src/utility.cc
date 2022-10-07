@@ -97,12 +97,18 @@ libSphysl::utility::vector_t::operator/(const double d) const{
 
 libSphysl::utility::vector_t
 libSphysl::utility::vector_t::proj(const vector_t& v) const{
-	/* proj_u(v) = (v.u^ / u^.u^) * (u^); u^ is the unit vector along u.
-	 * = ((v.u / len(u)) / (u.u / len(u)^2)) * (u / len(u))
-	 * = (v.u / u.u) * u * len(u)^0 = (v.u / u.u) * u
-	 * = v.u * u / len(u)^2. */
+	/* If this vector is the zero vector, we can't project onto it. */
+	const auto length_sq = this -> length_sq();
 
-	return (*this) * v.dot(*this) / this -> length_sq();
+	if(length_sq != 0.0) {
+		/* proj_u(v) = v.u^ * u^; u^ is the unit vector along u.
+		 * = (v.u * u) / len(u)^2 */
+		return (*this) * this -> dot(v) / length_sq;
+	}
+
+	else {
+		return v;
+	}
 }
 
 void libSphysl::utility::null_calculator(void* arg) {

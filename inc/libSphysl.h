@@ -186,7 +186,7 @@ inline config_t default_configs{
 	{"gravitational constant", 6.67430 * std::pow(10.0, -11.0)},
 	// Newton metre^2 / kilogramme^2
 
-	{"light speed", 2.99792458 * std::pow(10.0, 8.0)} // metres / second
+	{"speed of light", 2.99792458 * std::pow(10.0, 8.0)} // metres / second
 };
 
 inline config_t default_entry_values{

@@ -153,13 +153,13 @@ template<typename T> struct slice_t {
 	T operator+(const T& t) const{return *(this -> data) + t;}
 	T operator-(const T& t) const{return *(this -> data) - t;}
 	T operator*(const T& t) const{return *(this -> data) * t;}
-	T operator/(const T& t) const{return *(this -> data) * t;}
+	T operator/(const T& t) const{return *(this -> data) / t;}
 
 	/* The same, but in case we're dealing with another slice. */
 	T operator+(const slice_t<T>& s) const{return *(this -> data) + s();}
 	T operator-(const slice_t<T>& s) const{return *(this -> data) - s();}
 	T operator*(const slice_t<T>& s) const{return *(this -> data) * s();}
-	T operator/(const slice_t<T>& s) const{return *(this -> data) * s();}
+	T operator/(const slice_t<T>& s) const{return *(this -> data) / s();}
 
 	/* The same, but also store the result. */
 	T& operator= (const T& t) {return *(this -> data) =  t;}
@@ -183,12 +183,12 @@ template<typename T> struct slice_t {
 	bool operator>=(const T& t) const{return *(this -> data) >= t;}
 
 	/* The same, but for interacting with slices. */
-	bool operator< (const slice_t<T>& s) const {
-		return *(this -> data) <  s();
+	bool operator<(const slice_t<T>& s) const {
+		return *(this -> data) < s();
 	}
 
-	bool operator> (const slice_t<T>& s) const {
-		return *(this -> data) >  s();
+	bool operator>(const slice_t<T>& s) const {
+		return *(this -> data) > s();
 	}
 
 	bool operator==(const slice_t<T>& s) const {

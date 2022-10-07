@@ -146,7 +146,7 @@ static libSphysl::engine_t generator(
 	const auto threads = s -> threads.size(); // Not stored in config.
 
 	const auto& delta_t = get_double(s, "time change");
-	const auto& c = get_double(s, "light speed");
+	const auto& c = get_double(s, "speed of light");
 
 	/* Get the variables we need from the database. */
 	auto& ms = get_doubles(s, "mass");
@@ -336,7 +336,7 @@ template<bool relativistic, bool smoothed> static void calculator(void *arg) {
 		helper(i, data);
 
 		/* Set forces back to 0 for next simulation step. */
-		data.F_x = data.F_y = data.F_z = 0.0;
+		data.F_x = data.F_y = data.F_z = 0.0; // Newtons.
 
 		/* Step the slices forward. */
 		data.m++;

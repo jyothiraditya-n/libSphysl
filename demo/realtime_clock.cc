@@ -81,11 +81,11 @@ void display(void *arg) {
 	/* Clear the screen and move the cursor back to the home position
 	 * before printing the variables with their names and units. This uses
 	 * ANSI escape codes, see endnote [1] for more details on that. */
-	std::cout << "\033[H"
-		<< "Simulation Time: \033[0K" << time << " seconds\n"
-		<< "Time Change: \033[0K" << delta_t << " seconds\n"
+	std::cout << "\033[H\033[?25l"
+		<< "Simulation Time: \033[0K" << time << " s\n"
+		<< "Time Change:     \033[0K" << delta_t << " s\n"
 		<< "Simulation Tick: \033[0K" << tick
-		<< std::endl;
+		<< "\033[?25h" << std::endl;
 }
 
 /* [1] <https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797> */
